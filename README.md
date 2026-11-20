@@ -21,12 +21,15 @@ app/
 ├── db.py            # Mongo client opened in lifespan, get_db dependency, indexes
 ├── core/
 │   ├── config.py    # Settings loaded from env / .env
-│   ├── crud.py      # Shared insert/list/get/update/delete with 404/409 handling
 │   ├── ids.py       # ObjectId parsing and validation
+│   ├── logging.py   # Logger setup; every line carries the request id
+│   ├── middleware.py  # X-Request-ID, access log, JSON 500 handler
 │   └── pagination.py
 ├── importers/evital.py  # Cleans eVital stock exports into medicines + inventory
 ├── models/          # Pydantic Create / Update / Out schemas per resource
-└── routes/          # API endpoints, one file per resource
+├── repositories/    # Data access: one MongoRepository per collection (404/409 handling)
+├── services/        # Business rules spanning collections (reference checks, search)
+└── routes/          # Thin HTTP layer: validate input, call a service or repository
 scripts/seed_evital.py   # CLI: load an eVital export into a local dev database
 tests/               # pytest tests
 ```
@@ -88,6 +91,7 @@ store ("InstaMed Indirapuram (dev)") that serves pincode `201014`, priced at MRP
 |---|---|---|
 | `MONGO_URI` | `mongodb://localhost:27017` | MongoDB connection string |
 | `DB_NAME` | `instamed` | Database name |
+| `LOG_LEVEL` | `INFO` | Log level for the `instamed` loggers |
 
 ## Endpoints
 
@@ -105,7 +109,8 @@ Other endpoints:
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/` | Health message |
+| GET | `/` | Welcome message |
+| GET | `/health` | 200 `{"status": "ok"}` when Mongo answers, 503 otherwise |
 | GET | `/test-db` | List collections (dev only, removed in Phase 3) |
 | GET | `/search?pincode=&medicine_name=` | Price and stock of a medicine for a pincode (name is case-insensitive) |
 
@@ -133,8 +138,16 @@ Rules worth knowing:
 
 - [x] Phase 0: Foundation (config, tests, lint, docs)
 - [x] Phase 1: Correctness (status codes, validation, pagination, full CRUD)
-- [ ] Phase 2: Layered architecture, logging, indexes
+- [x] Phase 2: Layered architecture, logging, request ids, health check
 - [ ] Phase 3: Authentication and roles (JWT)
 - [ ] Phase 4: Orders, cart, prescriptions, atomic stock updates
 - [ ] Phase 5: Elasticsearch medicine search
 - [ ] Phase 6: Docker, CI, pre-commit
+
+## Observability
+
+Every response carries an `X-Request-ID` header (the caller's, or a generated one). Each
+request writes one access log line, `METHOD /path STATUS 12.3ms`, tagged with that id. Any
+unhandled error is logged with its traceback, and the client receives
+`500 {"detail": "Internal server error", "request_id": "..."}`, which is enough to find the
+matching log line without leaking internals.
