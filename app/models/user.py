@@ -53,4 +53,22 @@ class UserOut(BaseModel):
 
 class Token(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: Literal["bearer"] = "bearer"
+    expires_in: int = Field(description="Access token lifetime in seconds")
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str = Field(min_length=20, max_length=200)
+
+
+class PasswordChange(BaseModel):
+    current_password: str = Field(min_length=1, max_length=72)
+    new_password: str = Field(min_length=8, max_length=72)
+
+    @field_validator("new_password")
+    @classmethod
+    def _fits_bcrypt(cls, value: str) -> str:
+        if len(value.encode()) > 72:
+            raise ValueError("password must be at most 72 bytes")
+        return value

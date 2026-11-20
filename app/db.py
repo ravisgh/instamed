@@ -19,6 +19,10 @@ async def create_indexes(db: AsyncIOMotorDatabase) -> None:
     await db["users"].create_index("email", unique=True)
     await db["prescriptions"].create_index([("user_id", 1), ("status", 1)])
     await db["orders"].create_index([("user_id", 1), ("status", 1)])
+    await db["refresh_tokens"].create_index("token_hash", unique=True)
+    await db["refresh_tokens"].create_index("family_id")
+    # MongoDB deletes refresh tokens by itself once they expire.
+    await db["refresh_tokens"].create_index("expires_at", expireAfterSeconds=0)
 
 
 @asynccontextmanager

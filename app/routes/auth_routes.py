@@ -5,10 +5,9 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from app.core.auth import CurrentUser
 from app.core.rate_limit import client_ip, enforce
-from app.core.security import create_access_token
-from app.models.user import Token, UserOut, UserRegister
+from app.models.user import PasswordChange, RefreshRequest, Token, UserOut, UserRegister
 from app.repositories import Repos
-from app.services import users
+from app.services import tokens, users
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -38,7 +37,25 @@ async def login(
     )
     enforce(request, f"login:email:{email}", settings.login_attempts_per_email_per_minute, 60)
     user = await users.authenticate(repos, email, form.password)
-    return Token(access_token=create_access_token(user["id"], user["role"]))
+    return await tokens.issue(repos, user)
+
+
+@router.post("/refresh", response_model=Token)
+async def refresh(body: RefreshRequest, repos: Repos):
+    """Swap a refresh token for a new access + refresh token pair (the old one is used up)."""
+    return await tokens.rotate(repos, body.refresh_token)
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(body: RefreshRequest, repos: Repos):
+    """Revoke this refresh token and every token rotated from it."""
+    await tokens.logout(repos, body.refresh_token)
+
+
+@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+async def change_password(body: PasswordChange, user: CurrentUser, repos: Repos):
+    """Change your password. All your existing sessions are signed out."""
+    await tokens.change_password(repos, user, body)
 
 
 @router.get("/me", response_model=UserOut)

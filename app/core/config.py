@@ -30,7 +30,8 @@ class Settings(BaseSettings):
     # Auth. Override JWT_SECRET in every real deployment (32+ random characters).
     jwt_secret: str = DEV_JWT_SECRET
     jwt_algorithm: str = "HS256"
-    access_token_minutes: int = 60
+    access_token_minutes: int = 15
+    refresh_token_days: int = 14
     bcrypt_rounds: int = 12  # cost factor; tests lower it for speed
 
     # Brute-force protection (per process; see app/core/rate_limit.py).
