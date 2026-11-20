@@ -1,4 +1,4 @@
-"""Pincode -> serving warehouse -> medicine -> stock at that warehouse."""
+"""Pincode -> serving warehouse -> every pack size of a medicine -> stock there."""
 
 import re
 
@@ -8,37 +8,60 @@ from pydantic import BaseModel
 from app.repositories import Repositories
 
 
-class SearchResult(BaseModel):
+class SearchHit(BaseModel):
     medicine_id: str
-    medicine_name: str
+    name: str
+    pack_size: str
+    mrp: float
     price: float
     quantity_available: int
+    prescription_required: bool
+
+
+class SearchResponse(BaseModel):
+    pincode: str
+    store_id: str
+    results: list[SearchHit]
 
 
 def _not_found(detail: str) -> HTTPException:
     return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=detail)
 
 
-async def find_stock(repos: Repositories, pincode: str, medicine_name: str) -> SearchResult:
+def exact_name_query(name: str) -> dict:
+    """Case-insensitive exact match; re.escape stops input acting as a regex ('.*')."""
+    return {"name": {"$regex": f"^{re.escape(name.strip())}$", "$options": "i"}}
+
+
+async def find_stock(repos: Repositories, pincode: str, medicine_name: str) -> SearchResponse:
     zone = await repos.pincode_zones.find_one({"pincode": pincode})
     if zone is None:
         raise _not_found("Pincode not serviceable")
 
-    # re.escape stops user input being treated as a regex (".*" would match everything).
-    name_pattern = f"^{re.escape(medicine_name.strip())}$"
-    medicine = await repos.medicines.find_one({"name": {"$regex": name_pattern, "$options": "i"}})
-    if medicine is None:
+    medicines = {
+        str(doc["_id"]): doc
+        async for doc in repos.medicines.collection.find(exact_name_query(medicine_name))
+    }
+    if not medicines:
         raise _not_found("Medicine not found")
 
-    item = await repos.inventory.find_one(
-        {"store_id": zone["warehouse_id"], "medicine_id": medicine["id"]}
-    )
-    if item is None:
+    store_id = zone["warehouse_id"]
+    hits = [
+        SearchHit(
+            medicine_id=row["medicine_id"],
+            name=medicines[row["medicine_id"]]["name"],
+            pack_size=medicines[row["medicine_id"]]["pack_size"],
+            mrp=medicines[row["medicine_id"]]["mrp"],
+            price=row["price"],
+            quantity_available=row["quantity"],
+            prescription_required=medicines[row["medicine_id"]]["prescription_required"],
+        )
+        async for row in repos.inventory.collection.find(
+            {"store_id": store_id, "medicine_id": {"$in": list(medicines)}, "quantity": {"$gt": 0}}
+        )
+    ]
+    if not hits:
         raise _not_found("Medicine not available in your area")
 
-    return SearchResult(
-        medicine_id=medicine["id"],
-        medicine_name=medicine["name"],
-        price=item["price"],
-        quantity_available=item["quantity"],
-    )
+    hits.sort(key=lambda hit: (hit.price, hit.pack_size))
+    return SearchResponse(pincode=pincode, store_id=store_id, results=hits)

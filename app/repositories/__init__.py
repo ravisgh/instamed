@@ -19,6 +19,8 @@ class Repositories:
         self.inventory = MongoRepository(db["inventory"], "Inventory item")
         self.pincode_zones = MongoRepository(db["pincode_zones"], "Pincode zone")
         self.users = MongoRepository(db["users"], "User")
+        self.prescriptions = MongoRepository(db["prescriptions"], "Prescription")
+        self.orders = MongoRepository(db["orders"], "Order")
 
 
 def get_repos(db: AsyncIOMotorDatabase = Depends(get_db)) -> Repositories:

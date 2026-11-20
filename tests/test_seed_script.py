@@ -76,5 +76,6 @@ def test_seeded_data_is_served_by_the_api(client):
 
     assert {m["name"] for m in medicines} == {"Testocin 500 Tablet", "Othermed Syrup"}
     assert found.status_code == 200
-    assert found.json()["price"] == 120.5
-    assert found.json()["quantity_available"] == 3
+    hit = found.json()["results"][0]
+    assert hit["price"] == 120.5
+    assert hit["quantity_available"] == 3

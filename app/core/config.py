@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     access_token_minutes: int = 60
     bcrypt_rounds: int = 12  # cost factor; tests lower it for speed
 
+    # Prescription uploads are stored on local disk (kept out of git).
+    upload_dir: str = "uploads"
+    max_upload_bytes: int = 5 * 1024 * 1024
+
     @property
     def uses_dev_jwt_secret(self) -> bool:
         return self.jwt_secret == DEV_JWT_SECRET
