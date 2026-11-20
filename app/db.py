@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
     which keeps tests and reloads from sharing a client across loops.
     """
     settings = get_settings()
-    client = AsyncIOMotorClient(settings.mongo_uri)
+    client = AsyncIOMotorClient(settings.mongo_uri, serverSelectionTimeoutMS=3000)
     app.state.db = client[settings.db_name]
     await create_indexes(app.state.db)
     try:
