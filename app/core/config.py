@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     mongo_uri: str = "mongodb://localhost:27017"
     db_name: str = "instamed"
     log_level: str = "INFO"
+    log_format: Literal["text", "json"] = "text"
+
+    # Prometheus metrics at /metrics. Set METRICS_TOKEN to require a bearer token.
+    metrics_enabled: bool = True
+    metrics_token: str | None = None
 
     # Auth. Override JWT_SECRET in every real deployment (32+ random characters).
     jwt_secret: str = DEV_JWT_SECRET

@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from app.core import middleware
 from app.core.config import Settings, get_settings
 from app.core.logging import setup_logging
+from app.core.metrics import router as metrics_router
 from app.core.rate_limit import RateLimiter
 from app.db import lifespan
 from app.routes.auth_routes import router as auth_router
@@ -19,7 +20,7 @@ from app.routes.user_routes import router as user_router
 
 def create_app(settings: Settings) -> FastAPI:
     """Build the FastAPI app for the given settings (tests build variants of it)."""
-    setup_logging(settings.log_level)
+    setup_logging(settings.log_level, settings.log_format)
     docs = settings.show_docs
     app = FastAPI(
         title=settings.app_name,
@@ -45,6 +46,8 @@ def create_app(settings: Settings) -> FastAPI:
         order_router,
     ):
         app.include_router(router)
+    if settings.metrics_enabled:
+        app.include_router(metrics_router)
     app.add_api_route("/", read_root, methods=["GET"], include_in_schema=False)
     return app
 

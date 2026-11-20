@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.core import metrics
 from app.core.config import Settings
 from app.core.logging import get_logger, request_id_var
 
@@ -32,7 +33,9 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             response.headers[REQUEST_ID_HEADER] = request_id
             return response
         finally:
-            elapsed_ms = (time.perf_counter() - started) * 1000
+            elapsed = time.perf_counter() - started
+            elapsed_ms = elapsed * 1000
+            metrics.observe(request, status_code, elapsed)
             access_log.info(
                 "%s %s %s %.1fms", request.method, request.url.path, status_code, elapsed_ms
             )

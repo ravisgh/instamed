@@ -13,6 +13,7 @@ from collections.abc import Callable
 from fastapi import HTTPException, Request, status
 
 from app.core.logging import get_logger
+from app.core.metrics import RATE_LIMITED
 
 log = get_logger("ratelimit")
 
@@ -49,7 +50,9 @@ def enforce(request: Request, key: str, limit: int, window: float) -> None:
         return
     retry_after = request.app.state.rate_limiter.hit(key, limit, window)
     if retry_after is not None:
-        log.warning("Rate limit hit for %s", key.split(":", 1)[0])
+        kind = key.split(":", 1)[0]
+        log.warning("Rate limit hit for %s", kind)
+        RATE_LIMITED.labels(kind).inc()
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many attempts, try again later",
