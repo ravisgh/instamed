@@ -1,0 +1,60 @@
+# Full local stack: API + MongoDB + Elasticsearch.
+#
+#   $env:JWT_SECRET = "<long random string>"
+#   docker compose up -d --build
+#   curl http://127.0.0.1:8000/health
+#
+# Only the API is published (on 127.0.0.1). Mongo and Elasticsearch stay on the internal
+# network, so they never clash with a MongoDB already running on your machine.
+
+services:
+  api:
+    build: .
+    image: instamed-api:local
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      DB_NAME: instamed
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET before starting the stack}
+      LOG_LEVEL: INFO
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      mongo:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:8.0
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.19.3
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"  # internal network only; enable for real deployments
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
+  es-data:
+  uploads:

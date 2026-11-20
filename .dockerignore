@@ -1,0 +1,20 @@
+# Keep the build context small and free of secrets and local data.
+.git
+.github
+.claude
+venv
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+tests
+scripts
+data
+uploads
+*.xlsx
+*.csv
+.env
+.env.*
+Dockerfile
+docker-compose.yml
