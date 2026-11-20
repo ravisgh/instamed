@@ -9,6 +9,7 @@ from typing import Any
 from fastapi import HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorCollection
 from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 
 from app.core.ids import document_to_out, parse_object_id
 from app.core.pagination import Pagination
@@ -18,10 +19,23 @@ def not_found(resource: str) -> HTTPException:
     return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"{resource} not found")
 
 
-async def insert(collection: AsyncIOMotorCollection, data: dict[str, Any]) -> dict[str, Any]:
+async def insert(
+    collection: AsyncIOMotorCollection, data: dict[str, Any], resource: str = "Item"
+) -> dict[str, Any]:
     document = dict(data)  # insert_one adds `_id` to the dict it is given
-    result = await collection.insert_one(document)
+    try:
+        result = await collection.insert_one(document)
+    except DuplicateKeyError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=f"{resource} already exists"
+        ) from None
     return document_to_out({**document, "_id": result.inserted_id})
+
+
+async def ensure_exists(collection: AsyncIOMotorCollection, item_id: str, resource: str) -> None:
+    """404 unless a document with this id exists (used for references like medicine_id)."""
+    if await collection.count_documents({"_id": parse_object_id(item_id)}, limit=1) == 0:
+        raise not_found(resource)
 
 
 async def list_page(
