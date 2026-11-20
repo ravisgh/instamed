@@ -24,8 +24,10 @@ app/
 │   ├── crud.py      # Shared insert/list/get/update/delete with 404/409 handling
 │   ├── ids.py       # ObjectId parsing and validation
 │   └── pagination.py
+├── importers/evital.py  # Cleans eVital stock exports into medicines + inventory
 ├── models/          # Pydantic Create / Update / Out schemas per resource
 └── routes/          # API endpoints, one file per resource
+scripts/seed_evital.py   # CLI: load an eVital export into a local dev database
 tests/               # pytest tests
 ```
 
@@ -60,6 +62,26 @@ database named `instamed_test`, which is dropped after each test. `tests/conftes
 aborts the run if settings point at any other host or database, so tests can never
 touch Atlas or your other local databases.
 
+## Load dev data from an eVital export
+
+Stock exports are internal data: keep them **outside the repo** (or in `data/`, which is
+git-ignored, as is `*.xlsx`). The script only writes to a local `instamed_dev` or
+`instamed_test` database and refuses anything else.
+
+```powershell
+python -m scripts.seed_evital --file "C:\path\to\export.xlsx" --dry-run   # report only
+python -m scripts.seed_evital --file "C:\path\to\export.xlsx"             # load
+```
+
+`--reset` drops the app collections in the target dev db first. Re-running without it
+updates existing rows and inserts nothing twice.
+
+It reads the sheet whose name starts with `FINAL` and keeps only rows with full details:
+salt, HSN, known schedule, valid GST and MRP, at least one full pack, and at least 30 days
+to expiry (MM/YY means the end of that month). Duplicate (name, pack) rows are dropped
+entirely. The purchase price (PTR) column is never read. Everything is stocked in one dev
+store ("InstaMed Indirapuram (dev)") that serves pincode `201014`, priced at MRP.
+
 ## Configuration
 
 | Env var | Default | Purpose |
@@ -88,9 +110,19 @@ Other endpoints:
 | GET | `/search?pincode=&medicine_name=` | Price and stock of a medicine for a pincode (name is case-insensitive) |
 
 Rules worth knowing:
+- A medicine is a catalog item: one product in one pack size, unique by (name, pack_size).
+  It carries `mrp`, `schedule` (H/H1/X need a prescription; G/OTC do not), `gst_percent`
+  and `hsn_code`.
+- Inventory is the stock of one medicine at one store: `quantity` in packs, selling `price`,
+  `earliest_expiry`, `batch_count`, shelf `location`.
 - One inventory row per (store, medicine); one zone per pincode.
 - Inventory `medicine_id`/`store_id` and zone `warehouse_id` must point at existing documents.
 - Pincodes are 6-digit Indian PINs (first digit 1-9).
+
+### Breaking changes in v0.3.0
+- Medicine `price` is now `mrp`; new required fields `pack_size`, `gst_percent`, `hsn_code`.
+- Medicine `expiry_date` is removed; use inventory `earliest_expiry`.
+- Creating a second medicine with the same (name, pack_size) returns 409.
 
 ### Breaking changes in v0.2.0
 - `PUT /medicines/{id}` is now `PATCH` (send only the fields to change).

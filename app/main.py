@@ -10,7 +10,7 @@ from app.routes.store_routes import router as store_router
 
 settings = get_settings()
 
-app = FastAPI(title=settings.app_name, version="0.2.0", lifespan=lifespan)
+app = FastAPI(title=settings.app_name, version="0.3.0", lifespan=lifespan)
 
 app.include_router(medicine_router)
 app.include_router(store_router)

@@ -24,11 +24,32 @@ def test_create_returns_201(client, refs):
 
     assert ObjectId.is_valid(body["id"])
     assert body["quantity"] == 50
+    assert body["batch_count"] == 1
+    assert body["earliest_expiry"] is None
+    assert body["location"] is None
+
+
+def test_create_with_batch_details(client, refs):
+    body = create(
+        client, refs, earliest_expiry="2028-03-31", batch_count=2, location="IPM-SR3-R02"
+    )
+
+    assert body["earliest_expiry"] == "2028-03-31"
+    assert body["batch_count"] == 2
+    assert body["location"] == "IPM-SR3-R02"
 
 
 @pytest.mark.parametrize(
     "overrides",
-    [{"quantity": -1}, {"price": 0}, {"medicine_id": "bad"}, {"store_id": "bad"}],
+    [
+        {"quantity": -1},
+        {"price": 0},
+        {"medicine_id": "bad"},
+        {"store_id": "bad"},
+        {"batch_count": 0},
+        {"earliest_expiry": "03/28"},
+        {"location": ""},
+    ],
 )
 def test_create_rejects_invalid_data(client, refs, overrides):
     payload = {**refs, "quantity": 5, "price": 10, **overrides}
