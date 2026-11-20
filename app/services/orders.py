@@ -15,6 +15,7 @@ from pymongo import ReturnDocument
 
 from app.core.ids import document_to_out, parse_object_id
 from app.core.logging import get_logger
+from app.core.money import line_total, order_total
 from app.models.order import (
     CUSTOMER_CANCELLABLE,
     NEXT_STATUS,
@@ -94,7 +95,7 @@ async def place_order(repos: Repositories, user: dict[str, Any], body: OrderCrea
                     "pack_size": medicine["pack_size"],
                     "quantity": item.quantity,
                     "unit_price": row["price"],
-                    "line_total": round(row["price"] * item.quantity, 2),
+                    "line_total": line_total(row["price"], item.quantity),
                 }
             )
 
@@ -105,7 +106,7 @@ async def place_order(repos: Repositories, user: dict[str, Any], body: OrderCrea
                 "store_id": store_id,
                 "pincode": body.pincode,
                 "items": lines,
-                "total": round(sum(line["line_total"] for line in lines), 2),
+                "total": order_total(line["line_total"] for line in lines),
                 "status": "placed",
                 "prescription_id": body.prescription_id,
                 "created_at": now,

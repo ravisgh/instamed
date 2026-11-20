@@ -2,6 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.core.money import Rupees
 from app.models.base import UpdateModel
 
 # Indian drug schedules we stock. H/H1/X need a prescription; G and OTC do not.
@@ -19,7 +20,7 @@ class MedicineBase(BaseModel):
     composition: str = Field(min_length=1, max_length=1000, description="Salt(s) with strength")
     manufacturer: str = Field(min_length=1, max_length=200)
     pack_size: str = Field(min_length=1, max_length=100, examples=["15 Tablet", "100 Ml"])
-    mrp: float = Field(gt=0, description="Maximum retail price per pack, INR")
+    mrp: Rupees = Field(gt=0, description="Maximum retail price per pack, INR")
     schedule: Schedule = "OTC"
     prescription_required: bool = False
     gst_percent: GstPercent
@@ -37,7 +38,7 @@ class MedicineUpdate(UpdateModel):
     composition: str | None = Field(None, min_length=1, max_length=1000)
     manufacturer: str | None = Field(None, min_length=1, max_length=200)
     pack_size: str | None = Field(None, min_length=1, max_length=100)
-    mrp: float | None = Field(None, gt=0)
+    mrp: Rupees | None = Field(None, gt=0)
     schedule: Schedule | None = None
     prescription_required: bool | None = None
     gst_percent: GstPercent | None = None
@@ -46,3 +47,4 @@ class MedicineUpdate(UpdateModel):
 
 class MedicineOut(MedicineBase):
     id: str
+    mrp: float  # validated on input; reading older data must never fail
