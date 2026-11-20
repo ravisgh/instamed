@@ -18,9 +18,13 @@ answers "is this medicine available at my pincode?".
 ```
 app/
 ├── main.py          # FastAPI app, registers routers
-├── db.py            # Mongo client and database handle
-├── core/config.py   # Settings loaded from env / .env
-├── models/          # Pydantic request models
+├── db.py            # Mongo client opened in lifespan, get_db dependency, indexes
+├── core/
+│   ├── config.py    # Settings loaded from env / .env
+│   ├── crud.py      # Shared insert/list/get/update/delete with 404/409 handling
+│   ├── ids.py       # ObjectId parsing and validation
+│   └── pagination.py
+├── models/          # Pydantic Create / Update / Out schemas per resource
 └── routes/          # API endpoints, one file per resource
 tests/               # pytest tests
 ```
@@ -51,6 +55,11 @@ pytest
 ruff check .
 ```
 
+Tests need a **local** MongoDB on `localhost:27017`. They always use a throwaway
+database named `instamed_test`, which is dropped after each test. `tests/conftest.py`
+aborts the run if settings point at any other host or database, so tests can never
+touch Atlas or your other local databases.
+
 ## Configuration
 
 | Env var | Default | Purpose |
@@ -60,22 +69,38 @@ ruff check .
 
 ## Endpoints
 
+`medicines`, `stores`, `inventory` and `pincode-zones` all follow the same shape:
+
+| Method | Path | Success | Errors |
+|---|---|---|---|
+| POST | `/{resource}` | 201 + created item | 422 invalid body, 404 referenced id missing, 409 duplicate |
+| GET | `/{resource}?skip=0&limit=20` | 200 list (limit 1-100) | 422 bad paging |
+| GET | `/{resource}/{id}` | 200 item | 400 malformed id, 404 |
+| PATCH | `/{resource}/{id}` | 200 updated item | 400, 404, 409, 422 (empty or invalid body) |
+| DELETE | `/{resource}/{id}` | 204 | 400, 404 |
+
+Other endpoints:
+
 | Method | Path | Description |
 |---|---|---|
 | GET | `/` | Health message |
-| GET | `/test-db` | List collections (dev only, will be removed) |
-| POST, GET | `/medicines` | Create / list medicines |
-| GET, PUT, DELETE | `/medicines/{medicine_id}` | Read / update / delete one medicine |
-| POST, GET | `/stores` | Create / list stores |
-| POST, GET | `/inventory` | Create / list inventory items |
-| POST | `/pincode_zone` | Map a pincode to a warehouse |
-| GET | `/pincode-zone` | List pincode zones |
-| GET | `/search?pincode=&medicine_name=` | Price and stock of a medicine for a pincode |
+| GET | `/test-db` | List collections (dev only, removed in Phase 3) |
+| GET | `/search?pincode=&medicine_name=` | Price and stock of a medicine for a pincode (name is case-insensitive) |
+
+Rules worth knowing:
+- One inventory row per (store, medicine); one zone per pincode.
+- Inventory `medicine_id`/`store_id` and zone `warehouse_id` must point at existing documents.
+- Pincodes are 6-digit Indian PINs (first digit 1-9).
+
+### Breaking changes in v0.2.0
+- `PUT /medicines/{id}` is now `PATCH` (send only the fields to change).
+- `POST /pincode_zone` and `GET /pincode-zone` are now `/pincode-zones`.
+- Errors return proper HTTP status codes with `{"detail": "..."}` instead of `200 {"error": "..."}`.
 
 ## Roadmap
 
 - [x] Phase 0: Foundation (config, tests, lint, docs)
-- [ ] Phase 1: Correctness (status codes, validation, pagination, full CRUD)
+- [x] Phase 1: Correctness (status codes, validation, pagination, full CRUD)
 - [ ] Phase 2: Layered architecture, logging, indexes
 - [ ] Phase 3: Authentication and roles (JWT)
 - [ ] Phase 4: Orders, cart, prescriptions, atomic stock updates
