@@ -33,6 +33,12 @@ class Settings(BaseSettings):
     access_token_minutes: int = 60
     bcrypt_rounds: int = 12  # cost factor; tests lower it for speed
 
+    # Brute-force protection (per process; see app/core/rate_limit.py).
+    rate_limit_enabled: bool = True
+    login_attempts_per_email_per_minute: int = 5
+    login_attempts_per_ip_per_minute: int = 20
+    registrations_per_ip_per_hour: int = 10
+
     # Prescription uploads are stored on local disk (kept out of git).
     upload_dir: str = "uploads"
     max_upload_bytes: int = 5 * 1024 * 1024

@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from app.core import middleware
 from app.core.config import Settings, get_settings
 from app.core.logging import setup_logging
+from app.core.rate_limit import RateLimiter
 from app.db import lifespan
 from app.routes.auth_routes import router as auth_router
 from app.routes.health_routes import router as health_router
@@ -28,6 +29,8 @@ def create_app(settings: Settings) -> FastAPI:
         redoc_url="/redoc" if docs else None,
         openapi_url="/openapi.json" if docs else None,
     )
+    app.state.settings = settings
+    app.state.rate_limiter = RateLimiter()
     middleware.install(app, settings)
     for router in (
         health_router,
