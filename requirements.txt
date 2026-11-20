@@ -1,9 +1,9 @@
-fastapi==0.139.1
-uvicorn==0.51.0
+fastapi==0.163.2
+uvicorn==0.54.0
 motor==3.7.1
-pydantic==2.13.4
+pydantic==2.14.3
 pydantic-settings==2.16.3
-python-dotenv==1.2.2
+python-dotenv==1.2.4
 email-validator==2.4.0
 PyJWT==2.15.1
 bcrypt==5.0.0
