@@ -92,6 +92,7 @@ def client():
     Pass `headers=NO_AUTH` (or another user's headers) on a request to act as someone else.
     Wipes instamed_test afterwards.
     """
+    app.state.rate_limiter.reset()
     with TestClient(app) as test_client:
         test_client.headers.update(create_user("admin")["headers"])
         yield test_client

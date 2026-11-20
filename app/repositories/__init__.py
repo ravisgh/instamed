@@ -21,6 +21,7 @@ class Repositories:
         self.users = MongoRepository(db["users"], "User")
         self.prescriptions = MongoRepository(db["prescriptions"], "Prescription")
         self.orders = MongoRepository(db["orders"], "Order")
+        self.refresh_tokens = MongoRepository(db["refresh_tokens"], "Refresh token")
 
 
 def get_repos(db: AsyncIOMotorDatabase = Depends(get_db)) -> Repositories:

@@ -16,7 +16,13 @@ services:
       DB_NAME: instamed
       ELASTICSEARCH_URL: http://elasticsearch:9200
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET before starting the stack}
+      ENVIRONMENT: production
       LOG_LEVEL: INFO
+      LOG_FORMAT: json
+      # Swagger is off in production by default; on here so the local stack is explorable.
+      DOCS_ENABLED: "true"
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
     ports:
       - "127.0.0.1:8000:8000"
     volumes:

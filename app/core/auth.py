@@ -33,6 +33,8 @@ async def get_current_user(
     user = await repos.users.find_one({"_id": ObjectId(user_id)})
     if user is None or not user.get("is_active", False):
         raise _unauthorized
+    if payload.get("ver", 0) != user.get("token_version", 0):
+        raise _unauthorized  # issued before the last password change
     return user
 
 

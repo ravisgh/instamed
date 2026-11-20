@@ -53,6 +53,45 @@ uvicorn app.main:app --reload
 
 Interactive API docs: http://127.0.0.1:8000/docs
 
+## Production checklist
+
+Set `ENVIRONMENT=production`. The app then **refuses to start** unless `JWT_SECRET` is a
+random value of 32+ characters, turns off `/docs` (re-enable with `DOCS_ENABLED=true`),
+and sends HSTS.
+
+| Setting | Recommended in production |
+|---|---|
+| `ENVIRONMENT` | `production` |
+| `JWT_SECRET` | `python -c "import secrets; print(secrets.token_urlsafe(48))"` |
+| `CORS_ORIGINS` | your web app's origin(s), comma-separated, e.g. `https://app.example.com` |
+| `LOG_FORMAT` | `json` (one JSON object per line, with `request_id`) |
+| `METRICS_TOKEN` | a random token; Prometheus scrapes `/metrics` with `Authorization: Bearer <token>` |
+| `ACCESS_TOKEN_MINUTES` / `REFRESH_TOKEN_DAYS` | `15` / `14` (defaults) |
+| `MONGO_URI` | a dedicated database user with `readWrite` on this db only |
+
+What is built in:
+- **Sessions**: a 15-minute access JWT plus a rotating refresh token (`POST /auth/refresh`).
+  Only hashes of refresh tokens are stored, and reusing an old one revokes the whole
+  session family. `POST /auth/logout` revokes a session. `POST /auth/change-password` signs
+  out every session and invalidates older access tokens.
+- **Brute-force protection**: login is limited to 5 attempts per email and 20 per IP per
+  minute, and registration to 10 per IP per hour. Over the limit the API answers `429`
+  with `Retry-After`.
+- **Headers**: `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, a strict
+  CSP on API paths, and HSTS in production. CORS is allowed only for configured origins.
+- **Money**: amounts may have at most 2 decimals, and order totals use `Decimal` with
+  half-up rounding.
+- **Observability**: JSON logs, `/metrics` (request counts and latency by route template,
+  orders, login failures, rate-limit hits), and `/health` for load balancers.
+
+Known limits:
+- Rate-limit counters are kept per process. Run one API process per container, or move the
+  counters to Redis before scaling out.
+- Orders reserve stock with atomic per-line updates plus compensation, not multi-document
+  transactions.
+- Behind a reverse proxy, set `FORWARDED_ALLOW_IPS` to the proxy's address so client IPs
+  (used by rate limits) are correct.
+
 ## Run with Docker
 
 The whole stack (API + MongoDB + Elasticsearch) runs with one command. Only the API is
@@ -116,7 +155,12 @@ store ("InstaMed Indirapuram (dev)") that serves pincode `201014`, priced at MRP
 | `DB_NAME` | `instamed` | Database name |
 | `LOG_LEVEL` | `INFO` | Log level for the `instamed` loggers |
 | `JWT_SECRET` | dev-only value | Signing key for access tokens. **Set a long random value outside local dev.** |
-| `ACCESS_TOKEN_MINUTES` | `60` | Token lifetime |
+| `ACCESS_TOKEN_MINUTES` | `15` | Access token lifetime |
+| `REFRESH_TOKEN_DAYS` | `14` | Refresh token lifetime |
+| `ENVIRONMENT` | `development` | `production` enables strict checks (see Production checklist) |
+| `CORS_ORIGINS` | empty | Comma-separated browser origins allowed by CORS |
+| `LOG_FORMAT` | `text` | `json` for structured logs |
+| `METRICS_ENABLED` / `METRICS_TOKEN` | `true` / unset | Prometheus `/metrics` and optional bearer token |
 | `BCRYPT_ROUNDS` | `12` | Password hashing cost |
 | `UPLOAD_DIR` | `uploads` | Where prescription files are stored (git-ignored) |
 | `MAX_UPLOAD_BYTES` | `5242880` | Prescription upload limit (5 MB) |
@@ -214,6 +258,10 @@ Rules worth knowing:
 - Inventory `medicine_id`/`store_id` and zone `warehouse_id` must point at existing documents.
 - Pincodes are 6-digit Indian PINs (first digit 1-9).
 
+### Breaking changes in v0.8.0
+- Login returns `refresh_token` and `expires_in`; access tokens last 15 minutes.
+- Prices with more than 2 decimals are rejected (422).
+
 ### Breaking changes in v0.6.0
 - `/search` returns `{pincode, store_id, results: [...]}`, one entry per in-stock pack size.
 
@@ -240,6 +288,7 @@ Rules worth knowing:
 - [x] Phase 4: Orders, prescriptions, atomic stock updates, multi-pack search
 - [x] Phase 5: Elasticsearch medicine search (typo-tolerant, with MongoDB fallback)
 - [x] Phase 6: Docker, docker-compose, GitHub Actions CI, pre-commit
+- [x] Phase 7: Production hardening (sessions, rate limits, headers, money, metrics)
 
 ## Observability
 

@@ -1,28 +1,61 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.core.auth import CurrentUser
-from app.core.security import create_access_token
-from app.models.user import Token, UserOut, UserRegister
+from app.core.rate_limit import client_ip, enforce
+from app.models.user import PasswordChange, RefreshRequest, Token, UserOut, UserRegister
 from app.repositories import Repos
-from app.services import users
+from app.services import tokens, users
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-async def register(body: UserRegister, repos: Repos):
+async def register(body: UserRegister, repos: Repos, request: Request):
     """Create a customer account."""
+    settings = request.app.state.settings
+    enforce(
+        request,
+        f"register:ip:{client_ip(request)}",
+        settings.registrations_per_ip_per_hour,
+        window=3600,
+    )
     return await users.create_user(repos, body)
 
 
 @router.post("/login", response_model=Token)
-async def login(form: Annotated[OAuth2PasswordRequestForm, Depends()], repos: Repos):
+async def login(
+    form: Annotated[OAuth2PasswordRequestForm, Depends()], repos: Repos, request: Request
+):
     """OAuth2 password flow: send `username` (your email) and `password` as form fields."""
-    user = await users.authenticate(repos, form.username, form.password)
-    return Token(access_token=create_access_token(user["id"], user["role"]))
+    settings = request.app.state.settings
+    email = form.username.strip().lower()
+    enforce(
+        request, f"login:ip:{client_ip(request)}", settings.login_attempts_per_ip_per_minute, 60
+    )
+    enforce(request, f"login:email:{email}", settings.login_attempts_per_email_per_minute, 60)
+    user = await users.authenticate(repos, email, form.password)
+    return await tokens.issue(repos, user)
+
+
+@router.post("/refresh", response_model=Token)
+async def refresh(body: RefreshRequest, repos: Repos):
+    """Swap a refresh token for a new access + refresh token pair (the old one is used up)."""
+    return await tokens.rotate(repos, body.refresh_token)
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(body: RefreshRequest, repos: Repos):
+    """Revoke this refresh token and every token rotated from it."""
+    await tokens.logout(repos, body.refresh_token)
+
+
+@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+async def change_password(body: PasswordChange, user: CurrentUser, repos: Repos):
+    """Change your password. All your existing sessions are signed out."""
+    await tokens.change_password(repos, user, body)
 
 
 @router.get("/me", response_model=UserOut)

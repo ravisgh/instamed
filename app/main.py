@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 
 from app.core import middleware
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 from app.core.logging import setup_logging
+from app.core.metrics import router as metrics_router
+from app.core.rate_limit import RateLimiter
 from app.db import lifespan
 from app.routes.auth_routes import router as auth_router
 from app.routes.health_routes import router as health_router
@@ -15,24 +17,43 @@ from app.routes.search_routes import router as search_router
 from app.routes.store_routes import router as store_router
 from app.routes.user_routes import router as user_router
 
-settings = get_settings()
-setup_logging(settings.log_level)
 
-app = FastAPI(title=settings.app_name, version="0.7.0", lifespan=lifespan)
-middleware.install(app)
+def create_app(settings: Settings) -> FastAPI:
+    """Build the FastAPI app for the given settings (tests build variants of it)."""
+    setup_logging(settings.log_level, settings.log_format)
+    docs = settings.show_docs
+    app = FastAPI(
+        title=settings.app_name,
+        version="0.8.0",
+        lifespan=lifespan,
+        docs_url="/docs" if docs else None,
+        redoc_url="/redoc" if docs else None,
+        openapi_url="/openapi.json" if docs else None,
+    )
+    app.state.settings = settings
+    app.state.rate_limiter = RateLimiter()
+    middleware.install(app, settings)
+    for router in (
+        health_router,
+        auth_router,
+        user_router,
+        medicine_router,
+        store_router,
+        inventory_router,
+        pincode_zone_router,
+        search_router,
+        prescription_router,
+        order_router,
+    ):
+        app.include_router(router)
+    if settings.metrics_enabled:
+        app.include_router(metrics_router)
+    app.add_api_route("/", read_root, methods=["GET"], include_in_schema=False)
+    return app
 
-app.include_router(health_router)
-app.include_router(auth_router)
-app.include_router(user_router)
-app.include_router(medicine_router)
-app.include_router(store_router)
-app.include_router(inventory_router)
-app.include_router(pincode_zone_router)
-app.include_router(search_router)
-app.include_router(prescription_router)
-app.include_router(order_router)
 
-
-@app.get("/")
 def read_root():
     return {"message": "InstaMed backend is running!"}
+
+
+app = create_app(get_settings())
