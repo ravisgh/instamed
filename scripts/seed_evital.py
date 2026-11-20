@@ -33,7 +33,6 @@ DEV_STORE = {
 }
 
 
-
 def _ensure_indexes(db: Database) -> None:
     # Same indexes the API creates in app/db.py, so upserts can rely on them.
     db["pincode_zones"].create_index("pincode", unique=True)
