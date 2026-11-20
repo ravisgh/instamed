@@ -1,47 +1,35 @@
-from bson import ObjectId
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, status
 
-from app.db import database
-from app.models.medicine import Medicine
+from app.core import crud
+from app.core.pagination import Pagination
+from app.db import get_db
+from app.models.medicine import MedicineCreate, MedicineOut, MedicineUpdate
 
-router = APIRouter()
+router = APIRouter(prefix="/medicines", tags=["Medicines"])
 
-@router.post("/medicines")
-async def create_medicine(medicine: Medicine):
-    medicine_dict = medicine.dict()
-    result = await database["medicines"].insert_one(medicine_dict)
-    return {"id": str(result.inserted_id), "message": "Medicine added successfully"}
+RESOURCE = "Medicine"
 
-@router.get("/medicines")
-async def get_medicines():
-    medicines = []
-    async for medicine in database["medicines"].find():
-        medicine["_id"] = str(medicine["_id"])
-        medicines.append(medicine)
-    return medicines
 
-@router.get("/medicines/{medicine_id}")
-async def get_medicine(medicine_id: str):
-    medicine = await database["medicines"].find_one({"_id": ObjectId(medicine_id)})
-    if medicine:
-        medicine["_id"] = str(medicine["_id"])
-        return medicine
-    return {"error": "Medicine not found"}
+@router.post("", response_model=MedicineOut, status_code=status.HTTP_201_CREATED)
+async def create_medicine(medicine: MedicineCreate, db=Depends(get_db)):
+    return await crud.insert(db["medicines"], medicine.model_dump(mode="json"))
 
-@router.put("/medicines/{medicine_id}")
-async def update_medicine(medicine_id: str, medicine: Medicine):
-    updated_data = medicine.dict()
-    result = await database["medicines"].update_one(
-        {"_id": ObjectId(medicine_id)},
-        {"$set": updated_data}
-    )
-    if result.modified_count:
-        return {"message": "Medicine updated successfully"}
-    return {"error": "Medicine not found or no changes made"}
 
-@router.delete("/medicines/{medicine_id}")
-async def delete_medicine(medicine_id: str):
-    result = await database["medicines"].delete_one({"_id": ObjectId(medicine_id)})
-    if result.deleted_count:
-        return {"message": "Medicine deleted successfully"}
-    return {"error": "Medicine not found"}
+@router.get("", response_model=list[MedicineOut])
+async def list_medicines(page: Pagination = Depends(), db=Depends(get_db)):
+    return await crud.list_page(db["medicines"], page)
+
+
+@router.get("/{medicine_id}", response_model=MedicineOut)
+async def get_medicine(medicine_id: str, db=Depends(get_db)):
+    return await crud.get_or_404(db["medicines"], medicine_id, RESOURCE)
+
+
+@router.patch("/{medicine_id}", response_model=MedicineOut)
+async def update_medicine(medicine_id: str, changes: MedicineUpdate, db=Depends(get_db)):
+    return await crud.update_or_404(db["medicines"], medicine_id, changes.changes(), RESOURCE)
+
+
+@router.delete("/{medicine_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_medicine(medicine_id: str, db=Depends(get_db)):
+    await crud.delete_or_404(db["medicines"], medicine_id, RESOURCE)

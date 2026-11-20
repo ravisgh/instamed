@@ -1,21 +1,39 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, status
 
-from app.db import database
-from app.models.pincode_zone import Pincode_Zone
+from app.core import crud
+from app.core.pagination import Pagination
+from app.db import get_db
+from app.models.pincode_zone import PincodeZoneCreate, PincodeZoneOut, PincodeZoneUpdate
 
-router = APIRouter()
+router = APIRouter(prefix="/pincode-zones", tags=["Pincode zones"])
 
-@router.post("/pincode_zone")
-async def create_pincode_zone(pincode_zone: Pincode_Zone):
-    pincode_zone_dict = pincode_zone.dict()
-    result = await database["pincode_zones"].insert_one(pincode_zone_dict)
-    return {"id": str(result.inserted_id), "message": "Pincode zone added successfully"}
+RESOURCE = "Pincode zone"
+WAREHOUSE = "Warehouse"
 
-@router.get("/pincode-zone")
-async def get_pincode_zones():
-    pincode_zone_list = []
-    async for pincode_zone in database["pincode_zones"].find():
-        pincode_zone["_id"] = str(pincode_zone["_id"])
-        pincode_zone_list.append(pincode_zone)
-    return pincode_zone_list
-    
+
+@router.post("", response_model=PincodeZoneOut, status_code=status.HTTP_201_CREATED)
+async def create_pincode_zone(zone: PincodeZoneCreate, db=Depends(get_db)):
+    await crud.ensure_exists(db["stores"], zone.warehouse_id, WAREHOUSE)
+    return await crud.insert(db["pincode_zones"], zone.model_dump(mode="json"), RESOURCE)
+
+
+@router.get("", response_model=list[PincodeZoneOut])
+async def list_pincode_zones(page: Pagination = Depends(), db=Depends(get_db)):
+    return await crud.list_page(db["pincode_zones"], page)
+
+
+@router.get("/{zone_id}", response_model=PincodeZoneOut)
+async def get_pincode_zone(zone_id: str, db=Depends(get_db)):
+    return await crud.get_or_404(db["pincode_zones"], zone_id, RESOURCE)
+
+
+@router.patch("/{zone_id}", response_model=PincodeZoneOut)
+async def update_pincode_zone(zone_id: str, changes: PincodeZoneUpdate, db=Depends(get_db)):
+    if changes.warehouse_id is not None:
+        await crud.ensure_exists(db["stores"], changes.warehouse_id, WAREHOUSE)
+    return await crud.update_or_404(db["pincode_zones"], zone_id, changes.changes(), RESOURCE)
+
+
+@router.delete("/{zone_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_pincode_zone(zone_id: str, db=Depends(get_db)):
+    await crud.delete_or_404(db["pincode_zones"], zone_id, RESOURCE)
