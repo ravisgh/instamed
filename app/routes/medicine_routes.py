@@ -12,7 +12,7 @@ RESOURCE = "Medicine"
 
 @router.post("", response_model=MedicineOut, status_code=status.HTTP_201_CREATED)
 async def create_medicine(medicine: MedicineCreate, db=Depends(get_db)):
-    return await crud.insert(db["medicines"], medicine.model_dump(mode="json"))
+    return await crud.insert(db["medicines"], medicine.model_dump(mode="json"), RESOURCE)
 
 
 @router.get("", response_model=list[MedicineOut])
