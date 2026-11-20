@@ -91,3 +91,13 @@ def test_no_hsts_outside_production_and_docs_keep_working_csp():
     assert "Strict-Transport-Security" not in client.get("/").headers
     # Swagger UI loads scripts from a CDN, so the strict API CSP is not applied there.
     assert "Content-Security-Policy" not in client.get("/docs").headers
+
+
+def test_secrets_never_appear_in_errors_or_repr():
+    with pytest.raises(ValidationError) as exc:
+        Settings(_env_file=None, environment="production", jwt_secret="leaky-but-short")
+
+    assert "leaky-but-short" not in str(exc.value)
+    settings = Settings(_env_file=None, jwt_secret=STRONG_SECRET, metrics_token="scrape-me-123")
+    assert STRONG_SECRET not in repr(settings)
+    assert "scrape-me-123" not in repr(settings)

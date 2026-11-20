@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import model_validator
+from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Only for local development; the app logs a warning at startup while it is in use.
@@ -15,7 +15,8 @@ class Settings(BaseSettings):
     Field names map to env vars case-insensitively: mongo_uri <- MONGO_URI.
     """
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    # hide_input_in_errors: a config error must never print secrets into logs.
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", hide_input_in_errors=True)
 
     app_name: str = "InstaMed API"
     environment: Literal["development", "test", "production"] = "development"
@@ -30,10 +31,11 @@ class Settings(BaseSettings):
 
     # Prometheus metrics at /metrics. Set METRICS_TOKEN to require a bearer token.
     metrics_enabled: bool = True
-    metrics_token: str | None = None
+    metrics_token: SecretStr | None = None
 
     # Auth. Override JWT_SECRET in every real deployment (32+ random characters).
-    jwt_secret: str = DEV_JWT_SECRET
+    # SecretStr keeps the value out of reprs, logs and validation errors.
+    jwt_secret: SecretStr = SecretStr(DEV_JWT_SECRET)
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = 15
     refresh_token_days: int = 14
@@ -56,7 +58,7 @@ class Settings(BaseSettings):
 
     @property
     def uses_dev_jwt_secret(self) -> bool:
-        return self.jwt_secret == DEV_JWT_SECRET
+        return self.jwt_secret.get_secret_value() == DEV_JWT_SECRET
 
     @property
     def is_production(self) -> bool:
@@ -73,7 +75,8 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _production_must_be_safe(self):
         if self.is_production and (
-            self.uses_dev_jwt_secret or len(self.jwt_secret) < MIN_PROD_SECRET_LENGTH
+            self.uses_dev_jwt_secret
+            or len(self.jwt_secret.get_secret_value()) < MIN_PROD_SECRET_LENGTH
         ):
             raise ValueError(
                 f"JWT_SECRET must be set to a random value of at least "

@@ -41,6 +41,6 @@ async def metrics(request: Request) -> Response:
     token = request.app.state.settings.metrics_token
     if token:
         sent = request.headers.get("Authorization", "").removeprefix("Bearer ")
-        if not secrets.compare_digest(sent, token):
+        if not secrets.compare_digest(sent, token.get_secret_value()):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
