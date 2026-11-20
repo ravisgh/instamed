@@ -19,6 +19,10 @@ def not_found(resource: str) -> HTTPException:
     return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"{resource} not found")
 
 
+def conflict(resource: str) -> HTTPException:
+    return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"{resource} already exists")
+
+
 async def insert(
     collection: AsyncIOMotorCollection, data: dict[str, Any], resource: str = "Item"
 ) -> dict[str, Any]:
@@ -26,9 +30,7 @@ async def insert(
     try:
         result = await collection.insert_one(document)
     except DuplicateKeyError:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail=f"{resource} already exists"
-        ) from None
+        raise conflict(resource) from None
     return document_to_out({**document, "_id": result.inserted_id})
 
 
@@ -58,11 +60,14 @@ async def update_or_404(
     collection: AsyncIOMotorCollection, item_id: str, changes: dict[str, Any], resource: str
 ) -> dict[str, Any]:
     # Matching on _id (not modified_count) means re-sending identical data is still a 200.
-    document = await collection.find_one_and_update(
-        {"_id": parse_object_id(item_id)},
-        {"$set": changes},
-        return_document=ReturnDocument.AFTER,
-    )
+    try:
+        document = await collection.find_one_and_update(
+            {"_id": parse_object_id(item_id)},
+            {"$set": changes},
+            return_document=ReturnDocument.AFTER,
+        )
+    except DuplicateKeyError:
+        raise conflict(resource) from None
     if document is None:
         raise not_found(resource)
     return document_to_out(document)
