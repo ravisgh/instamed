@@ -53,6 +53,29 @@ uvicorn app.main:app --reload
 
 Interactive API docs: http://127.0.0.1:8000/docs
 
+## Run with Docker
+
+The whole stack (API + MongoDB + Elasticsearch) runs with one command. Only the API is
+published, on `127.0.0.1:8000`, so it never clashes with a MongoDB already on your machine.
+
+```powershell
+$env:JWT_SECRET = python -c "import secrets; print(secrets.token_urlsafe(48))"
+docker compose up -d --build
+curl http://127.0.0.1:8000/health
+```
+
+The image runs as a non-root user and has a built-in health check. Stop the stack with
+`docker compose down` (data stays in named volumes).
+
+## Quality gates
+
+- **pre-commit**: `pre-commit install` once. On every commit it runs ruff (lint + format),
+  basic file checks, private-key detection, and a hook that **blocks spreadsheets, CSVs and
+  `.env` files**.
+- **CI** (`.github/workflows/ci.yml`): on every PR and push to `main` it runs ruff check and
+  format check, the full test suite against real MongoDB 8 and Elasticsearch 8 service
+  containers, and a Docker image build.
+
 ## Test and lint
 
 ```powershell
@@ -216,7 +239,7 @@ Rules worth knowing:
 - [x] Phase 3: Authentication and roles (JWT)
 - [x] Phase 4: Orders, prescriptions, atomic stock updates, multi-pack search
 - [x] Phase 5: Elasticsearch medicine search (typo-tolerant, with MongoDB fallback)
-- [ ] Phase 6: Docker, CI, pre-commit
+- [x] Phase 6: Docker, docker-compose, GitHub Actions CI, pre-commit
 
 ## Observability
 
