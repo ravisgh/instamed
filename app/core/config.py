@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     upload_dir: str = "uploads"
     max_upload_bytes: int = 5 * 1024 * 1024
 
+    # Optional Elasticsearch for /medicines/search. Unset = Mongo fallback only.
+    elasticsearch_url: str | None = None
+    elasticsearch_index: str = "medicines"
+    elasticsearch_refresh: bool = False  # true = writes searchable immediately (tests)
+
     @property
     def uses_dev_jwt_secret(self) -> bool:
         return self.jwt_secret == DEV_JWT_SECRET

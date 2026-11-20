@@ -97,6 +97,8 @@ store ("InstaMed Indirapuram (dev)") that serves pincode `201014`, priced at MRP
 | `BCRYPT_ROUNDS` | `12` | Password hashing cost |
 | `UPLOAD_DIR` | `uploads` | Where prescription files are stored (git-ignored) |
 | `MAX_UPLOAD_BYTES` | `5242880` | Prescription upload limit (5 MB) |
+| `ELASTICSEARCH_URL` | unset | Enables Elasticsearch for `/medicines/search`; unset = MongoDB fallback |
+| `ELASTICSEARCH_INDEX` | `medicines` | Index name |
 
 ## Authentication
 
@@ -117,6 +119,24 @@ store ("InstaMed Indirapuram (dev)") that serves pincode `201014`, priced at MRP
 
 `POST /auth/register` always creates a customer. Wrong email and wrong password give the
 same `401 Incorrect email or password`, so the endpoint does not reveal which accounts exist.
+
+## Medicine search (Elasticsearch)
+
+`GET /medicines/search?q=&limit=` finds medicines by name, salt or manufacturer, and
+tolerates typos (`paracetmol`, `azithromicin`). The response says which engine answered:
+`{"engine": "elasticsearch" | "mongo", "results": [...]}`.
+
+- MongoDB stays the source of truth. Elasticsearch only ranks ids. Create, update and delete
+  keep the index in sync (best effort: an index failure is logged and never fails the write).
+- If `ELASTICSEARCH_URL` is unset, or Elasticsearch is down, search falls back to a MongoDB
+  case-insensitive substring match on name or salt.
+- Run Elasticsearch locally and build the index from your dev data:
+  ```powershell
+  docker run -d --name instamed-es -p 127.0.0.1:9200:9200 -e discovery.type=single-node -e xpack.security.enabled=false -e ES_JAVA_OPTS="-Xms512m -Xmx512m" docker.elastic.co/elasticsearch/elasticsearch:8.19.3
+  python -m scripts.reindex_es
+  ```
+- Tests that need Elasticsearch run only when a node answers on `127.0.0.1:9200`, using a
+  separate `instamed_test_medicines` index that is deleted after each test.
 
 ## Orders and prescriptions
 
@@ -158,6 +178,7 @@ Other endpoints:
 |---|---|---|
 | GET | `/` | Welcome message |
 | GET | `/health` | 200 `{"status": "ok"}` when Mongo answers, 503 otherwise |
+| GET | `/medicines/search?q=` | Typo-tolerant medicine search (Elasticsearch, MongoDB fallback) |
 | GET | `/search?pincode=&medicine_name=` | Every in-stock pack size of a medicine at the store serving the pincode, cheapest first (exact name, any case) |
 
 Rules worth knowing:
@@ -194,7 +215,7 @@ Rules worth knowing:
 - [x] Phase 2: Layered architecture, logging, request ids, health check
 - [x] Phase 3: Authentication and roles (JWT)
 - [x] Phase 4: Orders, prescriptions, atomic stock updates, multi-pack search
-- [ ] Phase 5: Elasticsearch medicine search
+- [x] Phase 5: Elasticsearch medicine search (typo-tolerant, with MongoDB fallback)
 - [ ] Phase 6: Docker, CI, pre-commit
 
 ## Observability
