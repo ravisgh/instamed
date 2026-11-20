@@ -7,6 +7,7 @@ never touch Atlas or any other local database.
 
 import os
 import tempfile
+import urllib.request
 from urllib.parse import urlparse
 
 TEST_MONGO_URI = "mongodb://localhost:27017"
@@ -18,6 +19,27 @@ os.environ["DB_NAME"] = TEST_DB_NAME
 os.environ["JWT_SECRET"] = "test-secret-not-for-production-0123456789"
 os.environ["BCRYPT_ROUNDS"] = "4"  # minimum cost: fast tests
 os.environ["UPLOAD_DIR"] = tempfile.mkdtemp(prefix="instamed-test-uploads-")
+
+# Elasticsearch tests run only when a local node answers; they use their own index.
+TEST_ES_URL = "http://127.0.0.1:9200"
+TEST_ES_INDEX = "instamed_test_medicines"
+
+
+def _es_available() -> bool:
+    try:
+        with urllib.request.urlopen(TEST_ES_URL, timeout=1) as response:
+            return response.status == 200
+    except OSError:
+        return False
+
+
+ES_AVAILABLE = _es_available()
+if ES_AVAILABLE:
+    os.environ["ELASTICSEARCH_URL"] = TEST_ES_URL
+    os.environ["ELASTICSEARCH_INDEX"] = TEST_ES_INDEX
+    os.environ["ELASTICSEARCH_REFRESH"] = "true"
+else:
+    os.environ.pop("ELASTICSEARCH_URL", None)
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
@@ -75,6 +97,19 @@ def client():
         yield test_client
     with MongoClient(TEST_MONGO_URI, serverSelectionTimeoutMS=2000) as mongo:
         mongo.drop_database(TEST_DB_NAME)
+    if ES_AVAILABLE:
+        _drop_es_test_index()
+
+
+def _drop_es_test_index() -> None:
+    request = urllib.request.Request(f"{TEST_ES_URL}/{TEST_ES_INDEX}", method="DELETE")
+    try:
+        urllib.request.urlopen(request, timeout=5).close()
+    except OSError:
+        pass  # 404 when the index was never created
+
+
+requires_es = pytest.mark.skipif(not ES_AVAILABLE, reason="no Elasticsearch on 127.0.0.1:9200")
 
 
 @pytest.fixture

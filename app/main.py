@@ -18,7 +18,7 @@ from app.routes.user_routes import router as user_router
 settings = get_settings()
 setup_logging(settings.log_level)
 
-app = FastAPI(title=settings.app_name, version="0.6.0", lifespan=lifespan)
+app = FastAPI(title=settings.app_name, version="0.7.0", lifespan=lifespan)
 middleware.install(app)
 
 app.include_router(health_router)

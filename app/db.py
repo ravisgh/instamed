@@ -1,10 +1,12 @@
 from contextlib import asynccontextmanager
 
+from elasticsearch import AsyncElasticsearch
 from fastapi import FastAPI, Request
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
+from app.search_engine import MedicineIndex
 
 
 async def create_indexes(db: AsyncIOMotorDatabase) -> None:
@@ -32,12 +34,40 @@ async def lifespan(app: FastAPI):
     client = AsyncIOMotorClient(settings.mongo_uri, serverSelectionTimeoutMS=3000, tz_aware=True)
     app.state.db = client[settings.db_name]
     await create_indexes(app.state.db)
+    app.state.search_index = await _open_search_index(settings)
     try:
         yield
     finally:
         client.close()
+        if app.state.search_index is not None:
+            await app.state.search_index.close()
+
+
+async def _open_search_index(settings) -> MedicineIndex | None:
+    """Connect to Elasticsearch if configured. Startup never fails because of it."""
+    if not settings.elasticsearch_url:
+        return None
+    index = MedicineIndex(
+        AsyncElasticsearch(settings.elasticsearch_url, request_timeout=5),
+        settings.elasticsearch_index,
+        refresh=settings.elasticsearch_refresh,
+    )
+    try:
+        await index.ensure_index()
+    except Exception:
+        get_logger("startup").warning(
+            "Elasticsearch at %s unavailable; search will use MongoDB until it is back",
+            settings.elasticsearch_url,
+            exc_info=True,
+        )
+    return index
 
 
 def get_db(request: Request) -> AsyncIOMotorDatabase:
     """FastAPI dependency: the database opened in lifespan."""
     return request.app.state.db
+
+
+def get_search_index(request: Request) -> MedicineIndex | None:
+    """FastAPI dependency: the Elasticsearch index, or None when not configured."""
+    return getattr(request.app.state, "search_index", None)
