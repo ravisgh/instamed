@@ -1,25 +1,25 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
-from app.db import database
+from app.db import get_db
 
 router = APIRouter()
 
 @router.get("/search")
-async def search_medicine(pincode: str, medicine_name: str):
+async def search_medicine(pincode: str, medicine_name: str, db=Depends(get_db)):
     
-    zone = await database["pincode_zones"].find_one({"pincode": pincode})
+    zone = await db["pincode_zones"].find_one({"pincode": pincode})
     if not zone:
         return {"error": "Pincode not serviceable"}
     
     warehouse_id = zone["warehouse_id"]
     
-    medicine = await database["medicines"].find_one({"name": medicine_name})
+    medicine = await db["medicines"].find_one({"name": medicine_name})
     if not medicine:
         return {"error": "Medicine not found"}
     
     medicine_id = str(medicine["_id"])
     
-    inventory_item = await database["inventory"].find_one({
+    inventory_item = await db["inventory"].find_one({
     "store_id": warehouse_id,
     "medicine_id": medicine_id
 })

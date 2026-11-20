@@ -1,20 +1,20 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
-from app.db import database
+from app.db import get_db
 from app.models.store import Store
 
 router = APIRouter()
 
 @router.post("/stores")
-async def create_store(store: Store):
+async def create_store(store: Store, db=Depends(get_db)):
     store_dict = store.dict()
-    result = await database["stores"].insert_one(store_dict)
+    result = await db["stores"].insert_one(store_dict)
     return {"id": str(result.inserted_id), "message": "Store added successfully"}
 
 @router.get("/stores")
-async def get_stores():
+async def get_stores(db=Depends(get_db)):
     stores = []
-    async for store in database["stores"].find():
+    async for store in db["stores"].find():
         store["_id"] = str(store["_id"])
         stores.append(store)
     return stores
