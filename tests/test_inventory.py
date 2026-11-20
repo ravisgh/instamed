@@ -30,9 +30,7 @@ def test_create_returns_201(client, refs):
 
 
 def test_create_with_batch_details(client, refs):
-    body = create(
-        client, refs, earliest_expiry="2028-03-31", batch_count=2, location="IPM-SR3-R02"
-    )
+    body = create(client, refs, earliest_expiry="2028-03-31", batch_count=2, location="IPM-SR3-R02")
 
     assert body["earliest_expiry"] == "2028-03-31"
     assert body["batch_count"] == 2

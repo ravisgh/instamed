@@ -117,9 +117,7 @@ def clean_row(row: dict[str, Any], today: date) -> CleanRow | str:
     )
 
 
-def clean_rows(
-    rows: Iterable[dict[str, Any]], today: date
-) -> tuple[list[CleanRow], list[Dropped]]:
+def clean_rows(rows: Iterable[dict[str, Any]], today: date) -> tuple[list[CleanRow], list[Dropped]]:
     """Clean every row and drop all copies of any (name, pack_size) seen more than once.
 
     Row numbers are spreadsheet rows: the header is row 1, so data starts at row 2.
