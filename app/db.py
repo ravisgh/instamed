@@ -1,12 +1,8 @@
-import os
-
-from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 
-load_dotenv()
+from app.core.config import get_settings
 
-MONGO_URI = os.getenv("MONGO_URI")
-DB_NAME = os.getenv("DB_NAME")
+settings = get_settings()
 
-client = AsyncIOMotorClient(MONGO_URI)
-database = client[DB_NAME]
+client = AsyncIOMotorClient(settings.mongo_uri)
+database = client[settings.db_name]

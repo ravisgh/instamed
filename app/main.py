@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from app.core.config import get_settings
 from app.db import database
 from app.routes.inventory_routes import router as inventory_router
 from app.routes.medicine_routes import router as medicine_router
@@ -7,7 +8,9 @@ from app.routes.pincode_zone_routes import router as pincode_zone_router
 from app.routes.search_routes import router as search_router
 from app.routes.store_routes import router as store_router
 
-app = FastAPI()
+settings = get_settings()
+
+app = FastAPI(title=settings.app_name, version="0.1.0")
 
 app.include_router(medicine_router)
 app.include_router(store_router)
