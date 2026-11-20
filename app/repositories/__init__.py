@@ -18,6 +18,7 @@ class Repositories:
         self.warehouses = MongoRepository(db["stores"], "Warehouse")  # same data, own 404 text
         self.inventory = MongoRepository(db["inventory"], "Inventory item")
         self.pincode_zones = MongoRepository(db["pincode_zones"], "Pincode zone")
+        self.users = MongoRepository(db["users"], "User")
 
 
 def get_repos(db: AsyncIOMotorDatabase = Depends(get_db)) -> Repositories:

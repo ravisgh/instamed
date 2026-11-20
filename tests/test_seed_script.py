@@ -6,7 +6,8 @@ import pytest
 from pymongo import MongoClient
 
 from app.importers.evital import clean_rows
-from scripts.seed_evital import DEV_PINCODE, check_target, main, seed
+from scripts.safety import check_target
+from scripts.seed_evital import DEV_PINCODE, main, seed
 from tests.conftest import TEST_DB_NAME, TEST_MONGO_URI
 from tests.test_importer import row
 

@@ -92,6 +92,29 @@ store ("InstaMed Indirapuram (dev)") that serves pincode `201014`, priced at MRP
 | `MONGO_URI` | `mongodb://localhost:27017` | MongoDB connection string |
 | `DB_NAME` | `instamed` | Database name |
 | `LOG_LEVEL` | `INFO` | Log level for the `instamed` loggers |
+| `JWT_SECRET` | dev-only value | Signing key for access tokens. **Set a long random value outside local dev.** |
+| `ACCESS_TOKEN_MINUTES` | `60` | Token lifetime |
+| `BCRYPT_ROUNDS` | `12` | Password hashing cost |
+
+## Authentication
+
+1. Create the first admin in your local dev database:
+   ```powershell
+   python -m scripts.create_admin --email you@example.com --full-name "Your Name"
+   ```
+2. Log in: `POST /auth/login` with form fields `username` (email) and `password`. In
+   `/docs`, click **Authorize** and do the same.
+3. Send `Authorization: Bearer <access_token>` on write requests.
+
+| Role | Can do |
+|---|---|
+| anyone | read medicines, stores, inventory, pincode zones; `/search`; register |
+| customer | the above + `GET /auth/me` |
+| pharmacist | + create/update/delete medicines and inventory |
+| admin | + stores, pincode zones, and `/users` (create staff, change roles, deactivate) |
+
+`POST /auth/register` always creates a customer. Wrong email and wrong password give the
+same `401 Incorrect email or password`, so the endpoint does not reveal which accounts exist.
 
 ## Endpoints
 
@@ -111,7 +134,6 @@ Other endpoints:
 |---|---|---|
 | GET | `/` | Welcome message |
 | GET | `/health` | 200 `{"status": "ok"}` when Mongo answers, 503 otherwise |
-| GET | `/test-db` | List collections (dev only, removed in Phase 3) |
 | GET | `/search?pincode=&medicine_name=` | Price and stock of a medicine for a pincode (name is case-insensitive) |
 
 Rules worth knowing:
@@ -123,6 +145,10 @@ Rules worth knowing:
 - One inventory row per (store, medicine); one zone per pincode.
 - Inventory `medicine_id`/`store_id` and zone `warehouse_id` must point at existing documents.
 - Pincodes are 6-digit Indian PINs (first digit 1-9).
+
+### Breaking changes in v0.5.0
+- POST/PATCH/DELETE on catalog resources need a bearer token with a staff role.
+- `/test-db` is removed; use `/health`.
 
 ### Breaking changes in v0.3.0
 - Medicine `price` is now `mrp`; new required fields `pack_size`, `gst_percent`, `hsn_code`.
@@ -139,7 +165,7 @@ Rules worth knowing:
 - [x] Phase 0: Foundation (config, tests, lint, docs)
 - [x] Phase 1: Correctness (status codes, validation, pagination, full CRUD)
 - [x] Phase 2: Layered architecture, logging, request ids, health check
-- [ ] Phase 3: Authentication and roles (JWT)
+- [x] Phase 3: Authentication and roles (JWT)
 - [ ] Phase 4: Orders, cart, prescriptions, atomic stock updates
 - [ ] Phase 5: Elasticsearch medicine search
 - [ ] Phase 6: Docker, CI, pre-commit

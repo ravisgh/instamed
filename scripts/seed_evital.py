@@ -15,15 +15,12 @@ from collections import Counter
 from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
-from urllib.parse import urlparse
 
 from pymongo import MongoClient, ReturnDocument, UpdateOne
 from pymongo.database import Database
 
 from app.importers.evital import CleanRow, clean_rows, read_rows
-
-ALLOWED_HOSTS = {"localhost", "127.0.0.1"}
-ALLOWED_DBS = {"instamed_dev", "instamed_test"}
+from scripts.safety import check_target
 
 DEV_PINCODE = "201014"  # Indirapuram, Ghaziabad
 DEV_STORE = {
@@ -35,15 +32,6 @@ DEV_STORE = {
     "opening_hours": "08:00-23:00",
 }
 
-
-def check_target(mongo_uri: str, db_name: str) -> None:
-    """Exit unless we are pointed at a local dev/test database."""
-    host = urlparse(mongo_uri).hostname
-    if host not in ALLOWED_HOSTS or db_name not in ALLOWED_DBS:
-        sys.exit(
-            f"Refusing to seed host={host!r} db={db_name!r}. "
-            f"Allowed hosts: {sorted(ALLOWED_HOSTS)}, dbs: {sorted(ALLOWED_DBS)}."
-        )
 
 
 def _ensure_indexes(db: Database) -> None:

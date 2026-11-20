@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
 from app.core.config import get_settings
+from app.core.logging import get_logger
 
 
 async def create_indexes(db: AsyncIOMotorDatabase) -> None:
@@ -13,6 +14,7 @@ async def create_indexes(db: AsyncIOMotorDatabase) -> None:
     await db["medicines"].create_index([("name", 1), ("pack_size", 1)], unique=True)
     # One inventory row per medicine per store.
     await db["inventory"].create_index([("store_id", 1), ("medicine_id", 1)], unique=True)
+    await db["users"].create_index("email", unique=True)
 
 
 @asynccontextmanager
@@ -23,6 +25,8 @@ async def lifespan(app: FastAPI):
     which keeps tests and reloads from sharing a client across loops.
     """
     settings = get_settings()
+    if settings.uses_dev_jwt_secret:
+        get_logger("startup").warning("JWT_SECRET is the built-in dev value; set it in production")
     client = AsyncIOMotorClient(settings.mongo_uri, serverSelectionTimeoutMS=3000)
     app.state.db = client[settings.db_name]
     await create_indexes(app.state.db)
