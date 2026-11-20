@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     app_name: str = "InstaMed API"
     mongo_uri: str = "mongodb://localhost:27017"
     db_name: str = "instamed"
+    log_level: str = "INFO"
 
 
 @lru_cache

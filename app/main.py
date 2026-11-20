@@ -1,7 +1,10 @@
 from fastapi import Depends, FastAPI
 
+from app.core import middleware
 from app.core.config import get_settings
+from app.core.logging import setup_logging
 from app.db import get_db, lifespan
+from app.routes.health_routes import router as health_router
 from app.routes.inventory_routes import router as inventory_router
 from app.routes.medicine_routes import router as medicine_router
 from app.routes.pincode_zone_routes import router as pincode_zone_router
@@ -9,9 +12,12 @@ from app.routes.search_routes import router as search_router
 from app.routes.store_routes import router as store_router
 
 settings = get_settings()
+setup_logging(settings.log_level)
 
-app = FastAPI(title=settings.app_name, version="0.3.0", lifespan=lifespan)
+app = FastAPI(title=settings.app_name, version="0.4.0", lifespan=lifespan)
+middleware.install(app)
 
+app.include_router(health_router)
 app.include_router(medicine_router)
 app.include_router(store_router)
 app.include_router(inventory_router)
