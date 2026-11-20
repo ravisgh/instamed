@@ -15,6 +15,8 @@ async def create_indexes(db: AsyncIOMotorDatabase) -> None:
     # One inventory row per medicine per store.
     await db["inventory"].create_index([("store_id", 1), ("medicine_id", 1)], unique=True)
     await db["users"].create_index("email", unique=True)
+    await db["prescriptions"].create_index([("user_id", 1), ("status", 1)])
+    await db["orders"].create_index([("user_id", 1), ("status", 1)])
 
 
 @asynccontextmanager
@@ -27,7 +29,7 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     if settings.uses_dev_jwt_secret:
         get_logger("startup").warning("JWT_SECRET is the built-in dev value; set it in production")
-    client = AsyncIOMotorClient(settings.mongo_uri, serverSelectionTimeoutMS=3000)
+    client = AsyncIOMotorClient(settings.mongo_uri, serverSelectionTimeoutMS=3000, tz_aware=True)
     app.state.db = client[settings.db_name]
     await create_indexes(app.state.db)
     try:

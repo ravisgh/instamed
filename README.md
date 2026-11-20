@@ -95,6 +95,8 @@ store ("InstaMed Indirapuram (dev)") that serves pincode `201014`, priced at MRP
 | `JWT_SECRET` | dev-only value | Signing key for access tokens. **Set a long random value outside local dev.** |
 | `ACCESS_TOKEN_MINUTES` | `60` | Token lifetime |
 | `BCRYPT_ROUNDS` | `12` | Password hashing cost |
+| `UPLOAD_DIR` | `uploads` | Where prescription files are stored (git-ignored) |
+| `MAX_UPLOAD_BYTES` | `5242880` | Prescription upload limit (5 MB) |
 
 ## Authentication
 
@@ -116,6 +118,28 @@ store ("InstaMed Indirapuram (dev)") that serves pincode `201014`, priced at MRP
 `POST /auth/register` always creates a customer. Wrong email and wrong password give the
 same `401 Incorrect email or password`, so the endpoint does not reveal which accounts exist.
 
+## Orders and prescriptions
+
+**Prescriptions** (`/prescriptions`, login required)
+- `POST` (multipart `file`): PDF, JPEG or PNG up to 5 MB. The declared type must match the
+  file's magic bytes, and the file is stored under a random name.
+- Customers list and read only their own prescriptions; staff see all (`?status=pending`).
+  `GET /{id}/file` downloads the file.
+- Staff: `PATCH /{id}/review` with `{"status": "approved" | "rejected", "note": "..."}`.
+  A prescription can be reviewed only once.
+
+**Orders** (`/orders`, login required)
+- `POST` with `{"pincode", "items": [{"medicine_id", "quantity"}], "prescription_id"?}`.
+  Stock comes from the store that serves the pincode. Each line is reserved with one atomic
+  conditional update (`quantity >= wanted`), so two orders can never take the same last
+  pack. If any line fails, the lines already taken are put back and you get
+  `409 Insufficient stock for <name>`.
+- If any item needs a prescription (schedule H/H1/X), `prescription_id` must point to an
+  **approved** prescription that belongs to the caller.
+- Status flow (staff, one step at a time): `placed → confirmed → dispatched → delivered`.
+  `POST /{id}/cancel` puts the stock back. Customers can cancel until dispatch, staff until
+  delivery. Every change is recorded in `history`.
+
 ## Endpoints
 
 `medicines`, `stores`, `inventory` and `pincode-zones` all follow the same shape:
@@ -134,7 +158,7 @@ Other endpoints:
 |---|---|---|
 | GET | `/` | Welcome message |
 | GET | `/health` | 200 `{"status": "ok"}` when Mongo answers, 503 otherwise |
-| GET | `/search?pincode=&medicine_name=` | Price and stock of a medicine for a pincode (name is case-insensitive) |
+| GET | `/search?pincode=&medicine_name=` | Every in-stock pack size of a medicine at the store serving the pincode, cheapest first (exact name, any case) |
 
 Rules worth knowing:
 - A medicine is a catalog item: one product in one pack size, unique by (name, pack_size).
@@ -145,6 +169,9 @@ Rules worth knowing:
 - One inventory row per (store, medicine); one zone per pincode.
 - Inventory `medicine_id`/`store_id` and zone `warehouse_id` must point at existing documents.
 - Pincodes are 6-digit Indian PINs (first digit 1-9).
+
+### Breaking changes in v0.6.0
+- `/search` returns `{pincode, store_id, results: [...]}`, one entry per in-stock pack size.
 
 ### Breaking changes in v0.5.0
 - POST/PATCH/DELETE on catalog resources need a bearer token with a staff role.
@@ -166,7 +193,7 @@ Rules worth knowing:
 - [x] Phase 1: Correctness (status codes, validation, pagination, full CRUD)
 - [x] Phase 2: Layered architecture, logging, request ids, health check
 - [x] Phase 3: Authentication and roles (JWT)
-- [ ] Phase 4: Orders, cart, prescriptions, atomic stock updates
+- [x] Phase 4: Orders, prescriptions, atomic stock updates, multi-pack search
 - [ ] Phase 5: Elasticsearch medicine search
 - [ ] Phase 6: Docker, CI, pre-commit
 

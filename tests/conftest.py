@@ -6,6 +6,7 @@ never touch Atlas or any other local database.
 """
 
 import os
+import tempfile
 from urllib.parse import urlparse
 
 TEST_MONGO_URI = "mongodb://localhost:27017"
@@ -16,6 +17,7 @@ os.environ["MONGO_URI"] = TEST_MONGO_URI
 os.environ["DB_NAME"] = TEST_DB_NAME
 os.environ["JWT_SECRET"] = "test-secret-not-for-production-0123456789"
 os.environ["BCRYPT_ROUNDS"] = "4"  # minimum cost: fast tests
+os.environ["UPLOAD_DIR"] = tempfile.mkdtemp(prefix="instamed-test-uploads-")
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

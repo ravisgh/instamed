@@ -39,9 +39,7 @@ class MongoRepository:
     async def list_page(
         self, page: Pagination, query: dict[str, Any] | None = None
     ) -> list[dict[str, Any]]:
-        cursor = (
-            self.collection.find(query or {}).sort("_id", 1).skip(page.skip).limit(page.limit)
-        )
+        cursor = self.collection.find(query or {}).sort("_id", 1).skip(page.skip).limit(page.limit)
         return [document_to_out(doc) async for doc in cursor]
 
     async def get(self, item_id: str) -> dict[str, Any]:
