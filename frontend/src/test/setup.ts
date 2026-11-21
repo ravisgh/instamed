@@ -8,7 +8,10 @@ import { server } from "./server";
 beforeAll(() => server.listen({ onUnhandledFrame: "error" }));
 afterEach(() => {
   server.resetHandlers();
-  cleanup();
-  window.localStorage.clear();
+  // Route-handler tests run in the "node" environment, which has no DOM.
+  if (typeof window !== "undefined") {
+    cleanup();
+    window.localStorage.clear();
+  }
 });
 afterAll(() => server.close());
