@@ -5,6 +5,7 @@ from app.routes.store_routes import router as store_router
 from app.routes.inventory_routes import router as inventory_router
 from app.routes.pincode_zone_routes import router as pincode_zone_router
 from app.routes.search_routes import router as search_router
+from app.routes.order_routes import router as order_router
 
 
 
@@ -15,6 +16,7 @@ app.include_router(store_router)
 app.include_router(inventory_router)
 app.include_router(pincode_zone_router)
 app.include_router(search_router)
+app.include_router(order_router)
 
 
 @app.get("/")
