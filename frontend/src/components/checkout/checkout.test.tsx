@@ -106,7 +106,8 @@ describe("Checkout", () => {
     const placeOrder = await screen.findByRole("button", { name: /place order/i });
     expect(placeOrder).toBeDisabled();
     const picker = await screen.findByRole("group", { name: /prescription/i });
-    expect(within(picker).getByLabelText(/new\.pdf/)).toBeDisabled(); // pending can't be used
+    // The list loads after the picker appears, so wait for it. Pending ones cannot be used.
+    expect(await within(picker).findByLabelText(/new\.pdf/)).toBeDisabled();
 
     await user.click(within(picker).getByLabelText(/old\.pdf/));
     await user.click(placeOrder);
