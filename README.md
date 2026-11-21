@@ -1,8 +1,8 @@
-# InstaMed Backend
+# InstaMed
 
-Pharmacy backend built with **FastAPI** and **MongoDB** (async, via Motor).
-It manages medicines, stores, inventory and pincode-to-warehouse zones, and
-answers "is this medicine available at my pincode?".
+Online pharmacy: a **FastAPI + MongoDB** backend and a **Next.js** customer web app
+(`frontend/`). Customers search medicines (typo tolerant), see stock and price at the
+store serving their pincode, upload prescriptions, and place and track orders.
 
 ## Tech stack
 
@@ -12,6 +12,8 @@ answers "is this medicine available at my pincode?".
 | Database | MongoDB via Motor (async driver) |
 | Validation / config | Pydantic v2, pydantic-settings |
 | Tests / lint | pytest + httpx, ruff |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind 4, TanStack Query |
+| Frontend tests | Vitest, Testing Library, MSW |
 
 ## Project layout
 
@@ -32,6 +34,7 @@ app/
 └── routes/          # Thin HTTP layer: validate input, call a service or repository
 scripts/seed_evital.py   # CLI: load an eVital export into a local dev database
 tests/               # pytest tests
+frontend/            # Next.js customer app (see "Frontend" below)
 ```
 
 ## Setup (Windows PowerShell)
@@ -52,6 +55,33 @@ uvicorn app.main:app --reload
 ```
 
 Interactive API docs: http://127.0.0.1:8000/docs
+
+## Frontend
+
+The customer app lives in `frontend/` and talks to the API running on `127.0.0.1:8000`.
+
+```powershell
+cd frontend
+npm install
+npm run dev          # http://localhost:3000 (start the API first)
+npm run check        # lint + typecheck + tests
+```
+
+Set `API_URL` if the API runs elsewhere (default `http://127.0.0.1:8000`).
+
+How it is wired:
+- **No CORS needed.** The browser calls `/backend/*` on the Next origin, and `next.config.ts`
+  rewrites those calls to the API.
+- **Sessions:** `/api/session` route handlers log in through the API and keep the
+  **refresh token in an httpOnly, SameSite=Strict cookie** scoped to `/api/session`. Browser
+  JavaScript only ever sees the 15-minute access token, which is kept in memory.
+  Concurrent refreshes share one request, because a reused refresh token revokes the session.
+- **Typed API:** `src/lib/api/schema.ts` is generated from the API's OpenAPI schema. After
+  changing the API, start it and run `npm run gen:api`. CI fails if the file is stale.
+- **Screens:** search + pincode availability (`/`), cart, checkout (prescription pick or
+  upload for Rx items), login/register, my orders with status timeline and cancel.
+- Known limit: two tabs refreshing at exactly the same moment can trip refresh-token reuse
+  detection and sign the user out. Logging in again fixes it.
 
 ## Production checklist
 
@@ -113,7 +143,8 @@ The image runs as a non-root user and has a built-in health check. Stop the stac
   `.env` files**.
 - **CI** (`.github/workflows/ci.yml`): on every PR and push to `main` it runs ruff check and
   format check, the full test suite against real MongoDB 8 and Elasticsearch 8 service
-  containers, and a Docker image build.
+  containers, a Docker image build, the frontend's lint/typecheck/tests/build, and a check
+  that the frontend's generated API types match the backend.
 
 ## Test and lint
 
@@ -289,6 +320,9 @@ Rules worth knowing:
 - [x] Phase 5: Elasticsearch medicine search (typo-tolerant, with MongoDB fallback)
 - [x] Phase 6: Docker, docker-compose, GitHub Actions CI, pre-commit
 - [x] Phase 7: Production hardening (sessions, rate limits, headers, money, metrics)
+- [x] Frontend F1: customer web app (search, cart, checkout with prescriptions, orders)
+- [ ] Frontend F2: pharmacist dashboard (order queue, prescription review, stock)
+- [ ] Deployment
 
 ## Observability
 

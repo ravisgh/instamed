@@ -1,0 +1,10 @@
+import { SearchPage } from "@/components/search/SearchPage";
+
+export default function Home() {
+  return (
+    <>
+      <h1 className="mb-4 text-2xl font-semibold">Find your medicines</h1>
+      <SearchPage />
+    </>
+  );
+}
