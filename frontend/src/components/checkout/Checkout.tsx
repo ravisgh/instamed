@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { Button, ErrorBanner } from "@/components/ui";
+import { OrderSummary } from "@/components/cart/CartView";
+import { CartIcon, LockIcon, PinIcon, ShieldIcon } from "@/components/icons";
+import { Button, Card, EmptyState, ErrorBanner, Spinner, buttonClass } from "@/components/ui";
 import type { Order, OrderCreate } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useCart } from "@/lib/cart/CartProvider";
@@ -15,7 +17,7 @@ import { PrescriptionPicker } from "./PrescriptionPicker";
 
 export function Checkout() {
   const { status, api } = useAuth();
-  const { cart, total, needsPrescription, clear } = useCart();
+  const { cart, count, total, needsPrescription, clear } = useCart();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [prescriptionId, setPrescriptionId] = useState<string | null>(null);
@@ -38,60 +40,67 @@ export function Checkout() {
 
   if (cart.lines.length === 0) {
     return (
-      <p className="text-slate-600">
-        Nothing to check out.{" "}
-        <Link href="/" className="text-emerald-700 hover:underline">
+      <EmptyState icon={<CartIcon />} title="Nothing to check out">
+        <p>Your cart is empty.</p>
+        <Link href="/" className={buttonClass("primary", "md", "mt-4")}>
           Search medicines
         </Link>
-      </p>
+      </EmptyState>
     );
   }
-  if (status === "loading") return <p className="text-slate-500">Loading…</p>;
+  if (status === "loading") return <Spinner />;
   if (status === "anonymous") {
     return (
-      <p className="text-slate-700">
-        Please{" "}
-        <Link href="/login?next=/checkout" className="font-medium text-emerald-700 hover:underline">
-          log in
-        </Link>{" "}
-        to place your order.
-      </p>
+      <EmptyState icon={<LockIcon />} title="Log in to place your order">
+        <p>Your cart is saved. Log in or create an account to continue.</p>
+        <Link href="/login?next=/checkout" className={buttonClass("primary", "md", "mt-4")}>
+          Log in
+        </Link>
+      </EmptyState>
     );
   }
 
   const blocked = needsPrescription && !prescriptionId;
 
   return (
-    <div className="space-y-4">
-      <section className="rounded-lg border border-slate-200 bg-white p-4">
-        <h2 className="mb-2 font-medium">Order summary · pincode {cart.pincode}</h2>
-        <ul className="space-y-1 text-sm">
-          {cart.lines.map((l) => (
-            <li key={l.medicine_id} className="flex justify-between">
-              <span>
-                {l.quantity} × {l.name} ({l.pack_size})
-              </span>
-              <span>{formatRupees(Math.round(l.price * 100 * l.quantity) / 100)}</span>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-3 flex justify-between border-t border-slate-100 pt-2 font-semibold">
-          <span>Total</span>
-          <span>{formatRupees(total)}</span>
+    <div className="grid items-start gap-6 lg:grid-cols-[1fr_20rem]">
+      <div className="space-y-4">
+        <Card className="p-5">
+          <h2 className="mb-3 flex items-center gap-2 text-base font-bold text-slate-900">
+            <PinIcon className="h-4 w-4 text-brand-600" /> Delivering to {cart.pincode}
+          </h2>
+          <ul className="divide-y divide-slate-100 text-sm">
+            {cart.lines.map((l) => (
+              <li key={l.medicine_id} className="flex justify-between gap-4 py-2.5">
+                <span className="text-slate-700">
+                  {l.quantity} × {l.name} <span className="text-slate-400">({l.pack_size})</span>
+                </span>
+                <span className="font-medium tabular-nums">
+                  {formatRupees(Math.round(l.price * 100 * l.quantity) / 100)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+
+        {needsPrescription && <PrescriptionPicker value={prescriptionId} onChange={setPrescriptionId} />}
+      </div>
+
+      <OrderSummary count={count} total={formatRupees(total)}>
+        {placeOrder.isError && <ErrorBanner message={placeOrder.error.message} />}
+        <Button
+          size="lg"
+          onClick={() => placeOrder.mutate()}
+          disabled={blocked || placeOrder.isPending}
+          className="w-full"
+        >
+          {placeOrder.isPending ? "Placing order…" : "Place order"}
+        </Button>
+        {blocked && <p className="text-center text-xs text-slate-500">Choose an approved prescription first.</p>}
+        <p className="flex items-center justify-center gap-1.5 text-xs text-slate-400">
+          <ShieldIcon className="h-3.5 w-3.5" /> You can cancel any time before dispatch
         </p>
-      </section>
-
-      {needsPrescription && <PrescriptionPicker value={prescriptionId} onChange={setPrescriptionId} />}
-      {placeOrder.isError && <ErrorBanner message={placeOrder.error.message} />}
-
-      <Button
-        onClick={() => placeOrder.mutate()}
-        disabled={blocked || placeOrder.isPending}
-        className="w-full py-2.5 text-base"
-      >
-        {placeOrder.isPending ? "Placing order…" : "Place order"}
-      </Button>
-      {blocked && <p className="text-center text-sm text-slate-500">Choose an approved prescription first.</p>}
+      </OrderSummary>
     </div>
   );
 }

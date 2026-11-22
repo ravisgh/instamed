@@ -1,10 +1,14 @@
+import type { Metadata } from "next";
+
 import { CartView } from "@/components/cart/CartView";
+import { Page } from "@/components/ui";
+
+export const metadata: Metadata = { title: "Cart" };
 
 export default function CartPage() {
   return (
-    <>
-      <h1 className="mb-4 text-2xl font-semibold">Your cart</h1>
+    <Page title="Your cart">
       <CartView />
-    </>
+    </Page>
   );
 }

@@ -1,10 +1,14 @@
+import type { Metadata } from "next";
+
 import { OrdersList } from "@/components/orders/OrdersList";
+import { Page } from "@/components/ui";
+
+export const metadata: Metadata = { title: "My orders" };
 
 export default function OrdersPage() {
   return (
-    <>
-      <h1 className="mb-4 text-2xl font-semibold">My orders</h1>
+    <Page title="My orders" subtitle="Track, view and cancel your orders.">
       <OrdersList />
-    </>
+    </Page>
   );
 }
