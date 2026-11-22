@@ -4,9 +4,12 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
+import { LockIcon, MailIcon } from "@/components/icons";
 import { Button, ErrorBanner } from "@/components/ui";
 import { ApiError } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
+
+import { AuthCard, Field } from "./AuthCard";
 
 /** Only same-site paths: "/orders" is fine, "https://evil.example" or "//evil" are not. */
 export function safeNext(next: string | null): string {
@@ -19,8 +22,6 @@ export function errorText(error: unknown): string {
   }
   return "Something went wrong. Please try again.";
 }
-
-export const inputClass = "mt-1 block w-full rounded-md border border-slate-300 px-3 py-2";
 
 export function LoginForm() {
   const { login } = useAuth();
@@ -45,26 +46,32 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="mx-auto max-w-sm space-y-4 rounded-lg border border-slate-200 bg-white p-6">
-      <h1 className="text-xl font-semibold">Log in</h1>
+    <AuthCard
+      title="Welcome back"
+      subtitle="Log in to order medicines and track your orders."
+      onSubmit={onSubmit}
+      footer={
+        <>
+          New here?{" "}
+          <Link href="/register" className="font-semibold text-brand-700 hover:underline">
+            Create an account
+          </Link>
+        </>
+      }
+    >
       {error && <ErrorBanner message={error} />}
-      <label className="block text-sm font-medium">
-        Email
-        <input name="email" type="email" autoComplete="email" required className={inputClass} />
-      </label>
-      <label className="block text-sm font-medium">
-        Password
-        <input name="password" type="password" autoComplete="current-password" required className={inputClass} />
-      </label>
-      <Button type="submit" disabled={busy} className="w-full py-2">
+      <Field label="Email" icon={<MailIcon />} name="email" type="email" autoComplete="email" required />
+      <Field
+        label="Password"
+        icon={<LockIcon />}
+        name="password"
+        type="password"
+        autoComplete="current-password"
+        required
+      />
+      <Button type="submit" size="lg" disabled={busy} className="w-full">
         {busy ? "Logging in…" : "Log in"}
       </Button>
-      <p className="text-center text-sm text-slate-600">
-        New here?{" "}
-        <Link href="/register" className="text-emerald-700 hover:underline">
-          Create an account
-        </Link>
-      </p>
-    </form>
+    </AuthCard>
   );
 }
