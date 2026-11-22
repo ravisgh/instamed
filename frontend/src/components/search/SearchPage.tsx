@@ -73,8 +73,8 @@ export function SearchPage() {
           <p className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-brand-700 ring-1 ring-brand-200">
             <PinIcon className="h-3.5 w-3.5" /> Delivered from a pharmacy near you
           </p>
-          <h1 className="max-w-2xl text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
-            Medicines from the pharmacy <span className="text-brand-600">nearest you</span>
+          <h1 className="max-w-3xl text-3xl font-extrabold tracking-tight text-balance text-slate-900 sm:text-4xl">
+            Medicines from the pharmacy <span className="whitespace-nowrap text-brand-600">nearest you</span>
           </h1>
           <p className="mt-2 max-w-xl text-slate-600">
             Search by name, salt or brand. See live stock and price at your pincode.
