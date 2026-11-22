@@ -1,15 +1,19 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { Page } from "@/components/ui";
+
 import { OrderRoute } from "./OrderRoute";
+
+export const metadata: Metadata = { title: "Order details" };
 
 export default function OrderPage() {
   // The order id comes from the URL at request time, so it renders inside Suspense.
   return (
-    <>
-      <h1 className="mb-4 text-2xl font-semibold">Order details</h1>
+    <Page title="Order details">
       <Suspense>
         <OrderRoute />
       </Suspense>
-    </>
+    </Page>
   );
 }
