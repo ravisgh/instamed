@@ -49,10 +49,26 @@ describe("SearchPage", () => {
     expect(api.searchedFor()).toBe("paracetmol");
 
     expect(await screen.findByText("₹28.10")).toBeInTheDocument();
-    expect(screen.getByText("3 in stock")).toBeInTheDocument();
+    expect(screen.getByText("Only 3 left")).toBeInTheDocument();
+    expect(screen.getByText("8% off")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /add to cart/i }));
 
     await waitFor(() => expect(screen.getByTestId("cart-count")).toHaveTextContent("1"));
+    // Once in the cart, the button turns into a quantity stepper.
+    await user.click(screen.getByRole("button", { name: /increase quantity of paracetamol/i }));
+    await waitFor(() => expect(screen.getByTestId("cart-count")).toHaveTextContent("2"));
+  });
+
+  it("fills the search box from a popular search", async () => {
+    const api = mockApi();
+    const user = userEvent.setup();
+    renderSearch();
+
+    await user.click(screen.getByRole("button", { name: "Paracetamol" }));
+
+    expect(screen.getByLabelText(/search medicines/i)).toHaveValue("Paracetamol");
+    expect(await screen.findByRole("button", { name: /Paracetamol 500 Tablet/ })).toBeInTheDocument();
+    expect(api.searchedFor()).toBe("Paracetamol");
   });
 
   it("remembers the pincode", async () => {
