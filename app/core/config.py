@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import SecretStr, model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Only for local development; the app logs a warning at startup while it is in use.
@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     elasticsearch_url: str | None = None
     elasticsearch_index: str = "medicines"
     elasticsearch_refresh: bool = False  # true = writes searchable immediately (tests)
+    # Fail fast when it is down: a short search timeout, then skip it for the cooldown.
+    elasticsearch_search_timeout_seconds: float = Field(1.0, gt=0)
+    elasticsearch_cooldown_seconds: float = Field(30.0, ge=0)
 
     @property
     def uses_dev_jwt_secret(self) -> bool:

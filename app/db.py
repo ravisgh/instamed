@@ -52,9 +52,11 @@ async def _open_search_index(settings) -> MedicineIndex | None:
     if not settings.elasticsearch_url:
         return None
     index = MedicineIndex(
-        AsyncElasticsearch(settings.elasticsearch_url, request_timeout=5),
+        AsyncElasticsearch(settings.elasticsearch_url, **MedicineIndex.CLIENT_OPTIONS),
         settings.elasticsearch_index,
         refresh=settings.elasticsearch_refresh,
+        search_timeout=settings.elasticsearch_search_timeout_seconds,
+        cooldown=settings.elasticsearch_cooldown_seconds,
     )
     try:
         await index.ensure_index()

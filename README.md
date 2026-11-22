@@ -197,6 +197,8 @@ store ("InstaMed Indirapuram (dev)") that serves pincode `201014`, priced at MRP
 | `MAX_UPLOAD_BYTES` | `5242880` | Prescription upload limit (5 MB) |
 | `ELASTICSEARCH_URL` | unset | Enables Elasticsearch for `/medicines/search`; unset = MongoDB fallback |
 | `ELASTICSEARCH_INDEX` | `medicines` | Index name |
+| `ELASTICSEARCH_SEARCH_TIMEOUT_SECONDS` | `1.0` | Per-search timeout before falling back to MongoDB |
+| `ELASTICSEARCH_COOLDOWN_SECONDS` | `30` | After a failure, skip Elasticsearch this long, then retry |
 
 ## Authentication
 
@@ -228,6 +230,10 @@ tolerates typos (`paracetmol`, `azithromicin`). The response says which engine a
   keep the index in sync (best effort: an index failure is logged and never fails the write).
 - If `ELASTICSEARCH_URL` is unset, or Elasticsearch is down, search falls back to a MongoDB
   case-insensitive substring match on name or salt.
+- The fallback is fast. The client does not retry, and searches time out after 1 s. After a
+  failure a circuit breaker sends requests straight to MongoDB for the cooldown (30 s), so
+  only one request pays for an outage. The next request after the cooldown tries
+  Elasticsearch again. Before this, every search waited about 8 s for client retries.
 - Run Elasticsearch locally and build the index from your dev data:
   ```powershell
   docker run -d --name instamed-es -p 127.0.0.1:9200:9200 -e discovery.type=single-node -e xpack.security.enabled=false -e ES_JAVA_OPTS="-Xms512m -Xmx512m" docker.elastic.co/elasticsearch/elasticsearch:8.19.3

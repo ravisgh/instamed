@@ -9,7 +9,7 @@ from app.core.ids import document_to_out
 from app.core.logging import get_logger
 from app.models.medicine import MedicineCreate, MedicineUpdate
 from app.repositories import Repositories
-from app.search_engine import MedicineIndex
+from app.search_engine import MedicineIndex, SearchUnavailable
 
 log = get_logger("medicines")
 
@@ -20,6 +20,10 @@ async def _sync(index: MedicineIndex | None, medicine: dict[str, Any]) -> None:
         return
     try:
         await index.upsert(medicine)
+    except SearchUnavailable:
+        log.info(
+            "Search index down; medicine %s not indexed, run the reindex script", medicine["id"]
+        )
     except Exception:
         log.warning("Could not index medicine %s; run the reindex script", medicine["id"])
 
@@ -65,6 +69,8 @@ async def search(
     if index is not None:
         try:
             ids = await index.search_ids(q, limit)
+        except SearchUnavailable:
+            pass  # breaker open: the failure was already logged once
         except Exception:
             log.warning("Elasticsearch search failed; falling back to MongoDB", exc_info=True)
         else:
