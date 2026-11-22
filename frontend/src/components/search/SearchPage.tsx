@@ -81,7 +81,7 @@ export function SearchPage() {
           </p>
 
           <div className="mt-6 flex flex-col gap-2 rounded-2xl bg-white p-2 shadow-lift ring-1 ring-slate-200 sm:flex-row">
-            <label className="flex items-center gap-2 rounded-xl px-3 py-2 sm:w-48 sm:border-r sm:border-slate-200">
+            <label className="flex items-center gap-2 rounded-xl px-3 py-2 focus-within:bg-brand-50/60 focus-within:ring-2 focus-within:ring-brand-500/40 sm:w-48">
               <PinIcon className="h-5 w-5 shrink-0 text-brand-600" />
               <span className="flex flex-col">
                 <span className="text-[11px] font-semibold tracking-wide text-slate-500 uppercase">Delivery pincode</span>
@@ -91,11 +91,11 @@ export function SearchPage() {
                   value={pincode}
                   onChange={(e) => setPincode(e.target.value.replace(/\D/g, ""))}
                   placeholder="201014"
-                  className="w-full bg-transparent text-base font-semibold text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400"
+                  className="w-full bg-transparent text-base font-semibold text-slate-900 outline-none focus-visible:outline-none placeholder:font-normal placeholder:text-slate-400"
                 />
               </span>
             </label>
-            <label className="flex flex-1 items-center gap-2 rounded-xl px-3 py-2">
+            <label className="flex flex-1 items-center gap-2 rounded-xl px-3 py-2 focus-within:bg-brand-50/60 focus-within:ring-2 focus-within:ring-brand-500/40">
               <SearchIcon className="h-5 w-5 shrink-0 text-slate-400" />
               <span className="flex flex-1 flex-col">
                 <span className="text-[11px] font-semibold tracking-wide text-slate-500 uppercase">Search medicines</span>
@@ -104,7 +104,7 @@ export function SearchPage() {
                   value={query}
                   onChange={(e) => changeQuery(e.target.value)}
                   placeholder="Name, salt or brand (typos are fine)"
-                  className="w-full bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400"
+                  className="w-full bg-transparent text-base text-slate-900 outline-none focus-visible:outline-none placeholder:text-slate-400"
                 />
               </span>
             </label>

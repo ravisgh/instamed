@@ -109,6 +109,12 @@ export const CheckIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const XIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M6 6l12 12M18 6 6 18" />
+  </Icon>
+);
+
 export const ChevronRightIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="m9 6 6 6-6 6" />

@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 
-import { ArrowLeftIcon, CheckIcon, LockIcon, PinIcon } from "@/components/icons";
+import { ArrowLeftIcon, CheckIcon, LockIcon, PinIcon, XIcon } from "@/components/icons";
 import { Button, Card, EmptyState, ErrorBanner, Skeleton, buttonClass } from "@/components/ui";
 import type { Order, OrderStatus } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -127,7 +127,7 @@ function Timeline({ order }: { order: Order }) {
                 cancelled ? "bg-rose-500" : "bg-brand-600"
               }`}
             >
-              <CheckIcon className="h-3.5 w-3.5" />
+              {cancelled ? <XIcon className="h-3.5 w-3.5" /> : <CheckIcon className="h-3.5 w-3.5" />}
             </span>
             <span className="text-sm">
               <span className={`block font-semibold ${cancelled ? "text-rose-700" : "text-slate-900"}`}>
